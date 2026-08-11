@@ -2,5 +2,5 @@
 2:I[36574,["/miyo-lab/_next/static/chunks/158myu8e_yme3.js","/miyo-lab/_next/static/chunks/1dncic3mfftx1.js"],"default"]
 3:I[97367,["/miyo-lab/_next/static/chunks/158myu8e_yme3.js"],"OutletBoundary"]
 4:"$Sreact.suspense"
-0:{"rsc":["$","$1","c",{"children":[["$","$L2",null,{}],[["$","script","script-0",{"src":"/miyo-lab/_next/static/chunks/1dncic3mfftx1.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"rSrhNf6NZ6fHLM3Ize8Ao"}
+0:{"rsc":["$","$1","c",{"children":[["$","$L2",null,{}],[["$","script","script-0",{"src":"/miyo-lab/_next/static/chunks/1dncic3mfftx1.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"ezObyoJOxwe8ZoR0dI2KQ"}
 5:null
