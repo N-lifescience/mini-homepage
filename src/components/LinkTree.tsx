@@ -339,7 +339,7 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
         style={{
           left: `${pos.x}%`,
           top: `${pos.y}%`,
-          transform: `translate(-50%, -100%) scaleX(${facing === "left" ? -1 : 1})`
+          transform: `translate(-50%, -100%) scaleX(${facing === "right" ? -1 : 1})`
         }}
         onClick={cycleMode}
         aria-label={`캐릭터 모드 바꾸기 (현재: ${mode.label})`}
@@ -347,7 +347,7 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
         {bubble ? (
           <span
             className="cy-character-bubble"
-            style={{ transform: `translateX(-50%) scaleX(${facing === "left" ? -1 : 1})` }}
+            style={{ transform: `translateX(-50%) scaleX(${facing === "right" ? -1 : 1})` }}
           >
             {bubble}
           </span>
