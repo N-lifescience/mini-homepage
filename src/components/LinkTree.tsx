@@ -24,6 +24,7 @@ import {
   waveLinks
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
+import { characterModes } from "@/config/character";
 
 const ALL_TABS = ["home", "profile", "story", "board", "photo"] as const;
 type TabName = (typeof ALL_TABS)[number];
@@ -115,13 +116,111 @@ function SectionTitle({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
+/* 방향키로 움직이고 클릭하면 모드(포즈+멘트)가 바뀌는 미니룸 캐릭터입니다.
+   배경(miniroom-bg-cyberpunk.jpg)의 바닥은 위쪽 한 점(꼭짓점)에서 벌어지는
+   삼각형이라, 벽으로 못 나가게 y값에 따라 x 이동 범위를 좁혀서 바닥 모양대로 막는다. */
+const CHARACTER_STEP = 3;
+const FLOOR_APEX_Y = 40; // 바닥이 시작되는 꼭짓점의 세로 위치(%)
+const FLOOR_MIN_Y = 43;
+const FLOOR_MAX_Y = 88;
+const FLOOR_SLOPE = 1.07; // 꼭짓점에서 아래로 1% 내려갈 때 바닥이 좌우로 넓어지는 폭(%)
+const FLOOR_EDGE_MARGIN = 5;
+const BUBBLE_DURATION_MS = 2600;
+
+function clampToFloor(x: number, y: number) {
+  const clampedY = Math.min(FLOOR_MAX_Y, Math.max(FLOOR_MIN_Y, y));
+  const halfWidth = FLOOR_SLOPE * (clampedY - FLOOR_APEX_Y);
+  const minX = Math.max(FLOOR_EDGE_MARGIN, 50 - halfWidth);
+  const maxX = Math.min(100 - FLOOR_EDGE_MARGIN, 50 + halfWidth);
+  return { x: Math.min(maxX, Math.max(minX, x)), y: clampedY };
+}
+
+function MiniRoomCharacter() {
+  const [pos, setPos] = useState({ x: 50, y: 68 });
+  const [facing, setFacing] = useState<"left" | "right">("right");
+  const [modeIndex, setModeIndex] = useState(0);
+  const [bubble, setBubble] = useState<string | null>(null);
+  const [hovering, setHovering] = useState(false);
+  const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      if (event.key === "ArrowLeft") setFacing("left");
+      if (event.key === "ArrowRight") setFacing("right");
+      setPos(prev => {
+        let { x, y } = prev;
+        if (event.key === "ArrowUp") y -= CHARACTER_STEP;
+        if (event.key === "ArrowDown") y += CHARACTER_STEP;
+        if (event.key === "ArrowLeft") x -= CHARACTER_STEP;
+        if (event.key === "ArrowRight") x += CHARACTER_STEP;
+        return clampToFloor(x, y);
+      });
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => () => {
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+  }, []);
+
+  const mode = characterModes[modeIndex];
+
+  function cycleMode() {
+    const nextIndex = (modeIndex + 1) % characterModes.length;
+    const nextMode = characterModes[nextIndex];
+    setModeIndex(nextIndex);
+    setBubble(nextMode.lines[Math.floor(Math.random() * nextMode.lines.length)]);
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+    bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_DURATION_MS);
+  }
+
+  return (
+    <div
+      className="cy-miniroom-stage"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <img className="cy-miniroom-bg" src={asset(profile.miniroom.src)} alt={profile.miniroom.alt} />
+
+      {hovering ? (
+        <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
+      ) : null}
+
+      <button
+        type="button"
+        className="cy-miniroom-character"
+        style={{
+          left: `${pos.x}%`,
+          top: `${pos.y}%`,
+          transform: `translate(-50%, -100%) scaleX(${facing === "left" ? -1 : 1})`
+        }}
+        onClick={cycleMode}
+        aria-label={`캐릭터 모드 바꾸기 (현재: ${mode.label})`}
+      >
+        {bubble ? (
+          <span
+            className="cy-character-bubble"
+            style={{ transform: `translateX(-50%) scaleX(${facing === "left" ? -1 : 1})` }}
+          >
+            {bubble}
+          </span>
+        ) : null}
+        <img src={asset(mode.src)} alt={`N 캐릭터 - ${mode.label}`} draggable={false} />
+      </button>
+    </div>
+  );
+}
+
 function HomeTab() {
   return (
     <>
       <div className="cy-content-box cy-miniroom-box">
         <SectionTitle title="Mini Room" sub="미니룸" />
         <div className="cy-miniroom-inner">
-          <img src={asset(profile.miniroom.src)} alt={profile.miniroom.alt} />
+          <MiniRoomCharacter />
         </div>
       </div>
 

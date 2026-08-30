@@ -543,6 +543,84 @@ body.lt-intro-open {
   width: 100%;
   height: auto;
 }
+
+/* 미니룸 캐릭터: 방향키로 움직이고 클릭하면 모드가 바뀝니다 */
+.cy-miniroom-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1376 / 768;
+  overflow: hidden;
+}
+.cy-miniroom-stage .cy-miniroom-bg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cy-miniroom-hint {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 5, 18, 0.85);
+  color: #FFD60A;
+  font-size: 0.68rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 214, 10, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  animation: cy-hint-in 0.15s ease-out;
+}
+@keyframes cy-hint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.cy-miniroom-stage .cy-miniroom-character {
+  position: absolute;
+  height: 24%;
+  min-height: 46px;
+  max-height: 96px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: left 0.12s linear, top 0.12s linear;
+  z-index: 4;
+}
+.cy-miniroom-stage .cy-miniroom-character img {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.5));
+}
+.cy-character-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  background: #F3EAFF;
+  color: #241242;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.cy-character-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #F3EAFF;
+}
 .cy-miniroom-welcome {
   font-size: 0.9rem;
   color: #547A60;
