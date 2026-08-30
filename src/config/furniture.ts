@@ -43,7 +43,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "CYBER-BIO 101 화이트보드",
     x: 78.1,
     y: 59.1,
-    heightPercent: 24
+    heightPercent: 24,
+    flip: true
   },
   {
     id: "blackboard",
@@ -67,6 +68,7 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "서버랙 겸 사물함",
     x: 89.9,
     y: 84.9,
-    heightPercent: 26
+    heightPercent: 26,
+    flip: true
   }
 ];

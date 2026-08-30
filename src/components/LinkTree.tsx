@@ -663,7 +663,14 @@ export default function LinkTree() {
   /* 본문을 항상 그려 두고 인트로를 그 위에 덮습니다. (.lt-intro 는 position: fixed 입니다)
      BGM 플레이어가 미리 준비되어 있어야 인트로 클릭 한 번으로 재생이 시작됩니다. */
   return (
-    <div className="cy-root">
+    <div
+      className="cy-root"
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, rgba(10,5,18,0.4), rgba(10,5,18,0.6)), " +
+          `url(${asset("/assets/cyberpunk-pixel-bg.jpg")})`
+      }}
+    >
       <div className="cy-background-pattern"></div>
 
       <div className="cy-book-wrapper">

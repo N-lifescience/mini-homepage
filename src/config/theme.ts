@@ -23,11 +23,11 @@ export type LinkTreeTheme = {
 
 export const theme: LinkTreeTheme = {
   colors: {
-    cream: "#0D0714",
+    cream: "#2D0B4E",
     ink: "#F3EAFF",
     dim: "#9D89C9",
     rose: "#2A1745",
-    brown: "#B14EFF",
+    brown: "#FFD60A",
     denim: "#5C3B8C",
     latte: "#1C0F2E",
     border: "rgba(255,214,10,0.25)",

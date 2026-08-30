@@ -32,8 +32,8 @@ body.lt-intro-open {
   inset: 0;
   z-index: 1;
   background:
-    radial-gradient(circle at 50% 45%, rgba(244,247,244,0.06), rgba(47,74,56,0.08) 38%, rgba(47,74,56,0.18) 100%),
-    linear-gradient(180deg, rgba(47,74,56,0.08), rgba(47,74,56,0.02) 46%, rgba(47,74,56,0.14));
+    radial-gradient(circle at 50% 45%, rgba(244,247,244,0.06), rgba(10,5,18,0.08) 38%, rgba(10,5,18,0.22) 100%),
+    linear-gradient(180deg, rgba(10,5,18,0.1), rgba(10,5,18,0.02) 46%, rgba(10,5,18,0.18));
 }
 
 .lt-intro-spiral {
@@ -95,7 +95,7 @@ body.lt-intro-open {
   font-family: var(--body);
   font-size: 1rem;
   font-weight: 900;
-  box-shadow: 0 16px 32px -14px rgba(47,74,56,0.72), 0 0 0 5px rgba(208,231,210,0.28);
+  box-shadow: 0 16px 32px -14px rgba(255,214,10,0.55), 0 0 0 5px rgba(177,78,255,0.28);
 }
 
 @keyframes lt-intro-card {
@@ -116,21 +116,25 @@ body.lt-intro-open {
   }
 }
 
-/* Background Pattern (풀밭/그라데이션 감성) */
+/* Background: 사이버펑크 도시 사진 (배경 이미지 자체는 인라인 style 로 들어갑니다.
+   basePath 가 붙는 GitHub Pages 배포에서 CSS url() 은 그 경로를 못 맞추기 때문입니다) */
 .cy-root {
   position: relative; /* 배경 패턴이 스크롤 영역 전체를 덮게 합니다 */
   min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(to bottom, #d4f0d4, #b2dbb2 50%, #8ac08a); /* 초록 파스텔 톤 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   padding: 2rem;
 }
 
 .cy-background-pattern {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255,214,10,0.35) 1px, transparent 1px);
   background-size: 10px 10px;
   pointer-events: none;
 }
@@ -148,8 +152,12 @@ body.lt-intro-open {
   height: 100%;
   background: #f4f4f4;
   border-radius: 12px;
-  border: 1px solid #ccc;
-  box-shadow: inset 0 0 0 3px #fff, 0 10px 30px rgba(0,0,0,0.2);
+  border: 1px solid rgba(177,78,255,0.4);
+  box-shadow:
+    inset 0 0 0 3px #fff,
+    0 0 0 1px rgba(255,214,10,0.25),
+    0 20px 50px -10px rgba(45,11,78,0.65),
+    0 0 60px -12px rgba(177,78,255,0.4);
   display: flex;
   padding: 25px 25px 25px 35px;
   position: relative;
@@ -182,7 +190,7 @@ body.lt-intro-open {
   display: flex;
   width: 100%;
   height: 100%;
-  border: 2px dashed #9cbba6;
+  border: 2px dashed #8B5CF6;
   border-radius: 8px;
   background: white;
   position: relative;
@@ -677,7 +685,7 @@ body.lt-intro-open {
 }
 .cy-miniroom-welcome {
   font-size: 0.9rem;
-  color: #547A60;
+  color: #5B2C8C;
   font-weight: bold;
 }
 
@@ -726,7 +734,7 @@ body.lt-intro-open {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #9CBBA6;
+  background: #8B5CF6;
 }
 
 .cy-contact-list {
@@ -744,7 +752,7 @@ body.lt-intro-open {
   margin-right: 6px;
 }
 .cy-contact-list a {
-  color: #547A60;
+  color: #5B2C8C;
   text-decoration: none;
 }
 .cy-contact-list a:hover {
@@ -809,9 +817,9 @@ body.lt-intro-open {
 
 /* 회차 보기 */
 .cy-back-btn {
-  background: #9CBBA6;
+  background: #8B5CF6;
   color: #fff;
-  border: 1px solid #779683;
+  border: 1px solid #6B3FA0;
   border-radius: 4px;
   padding: 5px 12px;
   font-size: 0.75rem;
@@ -820,7 +828,7 @@ body.lt-intro-open {
   margin-bottom: 12px;
 }
 .cy-back-btn:hover {
-  background: #8ac08a;
+  background: #F5B700;
 }
 .cy-cut-list {
   display: flex;
@@ -856,7 +864,7 @@ body.lt-intro-open {
   font-family: "Tahoma", sans-serif;
   font-size: 0.7rem;
   font-weight: bold;
-  color: #547A60;
+  color: #5B2C8C;
   background: #eef4ef;
   border-radius: 3px;
   padding: 3px 6px;
@@ -931,7 +939,7 @@ body.lt-intro-open {
 .cy-board-category {
   font-size: 0.68rem;
   color: #fff;
-  background: #9CBBA6;
+  background: #8B5CF6;
   border-radius: 3px;
   padding: 2px 6px;
   flex-shrink: 0;
@@ -1035,13 +1043,13 @@ body.lt-intro-open {
 }
 
 .cy-gb-page:hover {
-  border-color: #9CBBA6;
-  color: #547A60;
+  border-color: #8B5CF6;
+  color: #5B2C8C;
 }
 
 .cy-gb-page.is-active {
-  background: #9CBBA6;
-  border-color: #779683;
+  background: #8B5CF6;
+  border-color: #6B3FA0;
   color: #fff;
 }
 
@@ -1085,7 +1093,7 @@ body.lt-intro-open {
 .cy-gb-author:focus,
 .cy-gb-text:focus {
   outline: none;
-  border-color: #9CBBA6;
+  border-color: #8B5CF6;
 }
 
 .cy-gb-submit {
@@ -1094,15 +1102,15 @@ body.lt-intro-open {
   font-size: 0.75rem;
   font-weight: bold;
   padding: 5px 12px;
-  border: 1px solid #779683;
+  border: 1px solid #6B3FA0;
   border-radius: 3px;
-  background: #9CBBA6;
+  background: #8B5CF6;
   color: #fff;
   cursor: pointer;
 }
 
 .cy-gb-submit:hover:not(:disabled) {
-  background: #8ac08a;
+  background: #F5B700;
 }
 
 .cy-gb-submit:disabled {
@@ -1114,7 +1122,7 @@ body.lt-intro-open {
 .cy-gb-message {
   flex-basis: 100%;
   font-size: 0.72rem;
-  color: #547A60;
+  color: #5B2C8C;
 }
 
 .cy-gb-message.is-error {
@@ -1135,9 +1143,9 @@ body.lt-intro-open {
 }
 
 .cy-tab-btn {
-  background: #9CBBA6; /* 기본 탭 초록색 */
+  background: #8B5CF6; /* 기본 탭 초록색 */
   color: white;
-  border: 1px solid #779683;
+  border: 1px solid #6B3FA0;
   border-left: none; /* 책에 붙은 느낌 */
   border-radius: 0 6px 6px 0;
   padding: 6px 4px;
@@ -1162,13 +1170,13 @@ body.lt-intro-open {
 
 .cy-tab-btn:hover {
   width: 68px;
-  background: #8ac08a;
+  background: #F5B700;
 }
 
 .cy-tab-btn.active {
   background: white;
   color: #333;
-  border-color: #9cbba6;
+  border-color: #8B5CF6;
   width: 72px;
   font-weight: bold;
   z-index: 10;
@@ -1274,7 +1282,7 @@ body.lt-intro-open {
     min-width: 58px;
     min-height: 34px;
     padding: 6px 8px;
-    border: 1px solid #779683;
+    border: 1px solid #6B3FA0;
     border-radius: 6px 6px 0 0;
   }
 
