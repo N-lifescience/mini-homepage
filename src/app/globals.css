@@ -1069,6 +1069,54 @@ body.lt-intro-open {
   border-top: 1px solid #eee;
 }
 
+.cy-gb-account {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  color: #666;
+}
+
+.cy-gb-logout {
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: #8B5CF6;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.cy-guestbook-login {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.cy-gb-google {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 7px 14px;
+  border: 1px solid #6B3FA0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8B5CF6, #6B3FA0);
+  color: #fff;
+  cursor: pointer;
+}
+
+.cy-gb-google:hover:not(:disabled) {
+  background: linear-gradient(135deg, #F5B700, #8B5CF6);
+}
+
+.cy-gb-google:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .cy-gb-author,
 .cy-gb-text {
   font-family: inherit;

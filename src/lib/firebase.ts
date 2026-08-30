@@ -17,6 +17,15 @@ import {
   type Firestore,
   type Timestamp
 } from "firebase/firestore";
+import {
+  GoogleAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  type Auth,
+  type User
+} from "firebase/auth";
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -41,14 +50,49 @@ export type RemoteEntry = {
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let auth: Auth | null = null;
+
+function getApp() {
+  if (!app) app = getApps()[0] ?? initializeApp(config as Record<string, string>);
+  return app;
+}
 
 function getDb() {
   if (!isGuestbookEnabled) return null;
-  if (!db) {
-    app = getApps()[0] ?? initializeApp(config as Record<string, string>);
-    db = getFirestore(app);
-  }
+  if (!db) db = getFirestore(getApp());
   return db;
+}
+
+function getAuthInstance() {
+  if (!isGuestbookEnabled) return null;
+  if (!auth) auth = getAuth(getApp());
+  return auth;
+}
+
+/* ---------------------------------------------------------------
+   구글 로그인. 방명록에 글을 남기려면 로그인이 되어 있어야 합니다
+   (스팸/도배 방지용 잠금이고, 이름은 로그인과 상관없이 직접 적습니다).
+   --------------------------------------------------------------- */
+
+export function subscribeAuthState(onChange: (user: User | null) => void) {
+  const instance = getAuthInstance();
+  if (!instance) {
+    onChange(null);
+    return () => {};
+  }
+  return onAuthStateChanged(instance, onChange);
+}
+
+export async function signInWithGoogle() {
+  const instance = getAuthInstance();
+  if (!instance) throw new Error("로그인 기능이 설정되지 않았습니다.");
+  await signInWithPopup(instance, new GoogleAuthProvider());
+}
+
+export async function signOutOfGoogle() {
+  const instance = getAuthInstance();
+  if (!instance) return;
+  await signOut(instance);
 }
 
 function formatDate(value: unknown) {
@@ -136,6 +180,7 @@ export function subscribeGuestbook(
 export async function addGuestbookEntry(author: string, text: string) {
   const store = getDb();
   if (!store) throw new Error("한줄평 기능이 설정되지 않았습니다.");
+  if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 남길 수 있어요.");
 
   const trimmedAuthor = author.trim();
   const trimmedText = text.trim();

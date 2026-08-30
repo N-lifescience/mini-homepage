@@ -10,10 +10,14 @@ import {
   isCounterEnabled,
   isGuestbookEnabled,
   recordVisit,
+  signInWithGoogle,
+  signOutOfGoogle,
+  subscribeAuthState,
   subscribeGuestbook,
   type RemoteEntry,
   type VisitCounts
 } from "@/lib/firebase";
+import type { User } from "firebase/auth";
 import {
   boardPosts,
   episodes,
@@ -154,10 +158,17 @@ function MiniRoomCharacter() {
 
   /* 편집모드: 가구를 드래그로 옮기고 좌우 반전을 미리 볼 수 있습니다.
      여기서 옮긴 값은 화면에서만 바뀌고 저장되지 않으니, 마음에 드는 좌표를
-     캡쳐해서 알려주시면 src/config/furniture.ts 에 직접 반영합니다. */
+     캡쳐해서 알려주시면 src/config/furniture.ts 에 직접 반영합니다.
+     실수로 방문자가 건드리지 않도록, 주소 끝에 ?edit=1 을 붙였을 때만 켜는
+     버튼이 보입니다 (배포본에는 항상 있지만 평소엔 숨어 있습니다). */
   const [editMode, setEditMode] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
   const [layout, setLayout] = useState<FurnitureLayout>(initialFurnitureLayout);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCanEdit(new URLSearchParams(window.location.search).get("edit") === "1");
+  }, []);
   const stageRef = useRef<HTMLDivElement>(null);
 
   function pointToPercent(clientX: number, clientY: number) {
@@ -289,13 +300,15 @@ function MiniRoomCharacter() {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="cy-miniroom-edit-toggle"
-        onClick={() => setEditMode(v => !v)}
-      >
-        {editMode ? "편집모드 끄기" : "편집모드"}
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          className="cy-miniroom-edit-toggle"
+          onClick={() => setEditMode(v => !v)}
+        >
+          {editMode ? "편집모드 끄기" : "편집모드"}
+        </button>
+      ) : null}
 
       {hovering && !editMode ? (
         <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
@@ -475,11 +488,35 @@ function BoardTab() {
   );
 }
 
+/* 방명록은 구글 로그인을 해야 남길 수 있습니다 (도배 방지용 잠금이고,
+   이름은 로그인과 상관없이 직접 적은 값을 그대로 씁니다). */
 function GuestbookForm() {
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  useEffect(() => {
+    return subscribeAuthState(next => {
+      setUser(next);
+      setAuthReady(true);
+    });
+  }, []);
+
+  const login = async () => {
+    setLoggingIn(true);
+    setMessage(null);
+    try {
+      await signInWithGoogle();
+    } catch {
+      setMessage({ kind: "error", text: "로그인하지 못했어요. 잠시 뒤 다시 시도해 주세요." });
+    } finally {
+      setLoggingIn(false);
+    }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -498,8 +535,29 @@ function GuestbookForm() {
     }
   };
 
+  if (!authReady) return null;
+
+  if (!user) {
+    return (
+      <div className="cy-guestbook-login">
+        <button type="button" className="cy-gb-google" onClick={login} disabled={loggingIn}>
+          {loggingIn ? "로그인 중…" : "Google로 로그인하고 한줄평 남기기"}
+        </button>
+        {message ? (
+          <span className={`cy-gb-message${message.kind === "error" ? " is-error" : ""}`}>{message.text}</span>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <form className="cy-guestbook-form" onSubmit={submit}>
+      <div className="cy-gb-account">
+        {user.displayName ?? "구글 사용자"}님으로 로그인됨 ·{" "}
+        <button type="button" className="cy-gb-logout" onClick={() => signOutOfGoogle()}>
+          로그아웃
+        </button>
+      </div>
       <input
         className="cy-gb-author"
         value={author}
