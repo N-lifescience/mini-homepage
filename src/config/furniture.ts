@@ -8,6 +8,8 @@ export type FurnitureItem = {
   x: number;
   y: number;
   heightPercent: number;
+  /* 좌우로 뒤집어서 놓고 싶으면 true 로 둡니다. */
+  flip?: boolean;
 };
 
 export const furnitureItems: FurnitureItem[] = [

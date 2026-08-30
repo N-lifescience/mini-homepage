@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Spiral, type SpiralProps } from "@paper-design/shaders-react";
 import { asset } from "@/lib/asset";
 import BgmPlayer, { type BgmHandle } from "@/components/BgmPlayer";
@@ -136,6 +136,14 @@ function clampToFloor(x: number, y: number) {
   return { x: Math.min(maxX, Math.max(minX, x)), y: clampedY };
 }
 
+type FurnitureLayout = Record<string, { x: number; y: number; flip: boolean }>;
+
+function initialFurnitureLayout(): FurnitureLayout {
+  return Object.fromEntries(
+    furnitureItems.map(item => [item.id, { x: item.x, y: item.y, flip: !!item.flip }])
+  );
+}
+
 function MiniRoomCharacter() {
   const [pos, setPos] = useState({ x: 50, y: 68 });
   const [facing, setFacing] = useState<"left" | "right">("right");
@@ -143,6 +151,56 @@ function MiniRoomCharacter() {
   const [bubble, setBubble] = useState<string | null>(null);
   const [hovering, setHovering] = useState(false);
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* 편집모드: 가구를 드래그로 옮기고 좌우 반전을 미리 볼 수 있습니다.
+     여기서 옮긴 값은 화면에서만 바뀌고 저장되지 않으니, 마음에 드는 좌표를
+     캡쳐해서 알려주시면 src/config/furniture.ts 에 직접 반영합니다. */
+  const [editMode, setEditMode] = useState(false);
+  const [layout, setLayout] = useState<FurnitureLayout>(initialFurnitureLayout);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  function pointToPercent(clientX: number, clientY: number) {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+    return { x, y };
+  }
+
+  function startDrag(id: string) {
+    return (event: ReactMouseEvent) => {
+      if (!editMode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDraggingId(id);
+    };
+  }
+
+  useEffect(() => {
+    if (!draggingId) return;
+    function onMove(event: MouseEvent) {
+      const point = pointToPercent(event.clientX, event.clientY);
+      if (!point) return;
+      setLayout(prev => ({
+        ...prev,
+        [draggingId!]: { ...prev[draggingId!], x: Math.round(point.x * 10) / 10, y: Math.round(point.y * 10) / 10 }
+      }));
+    }
+    function onUp() {
+      setDraggingId(null);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [draggingId]);
+
+  function toggleFlip(id: string) {
+    setLayout(prev => ({ ...prev, [id]: { ...prev[id], flip: !prev[id].flip } }));
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -181,27 +239,65 @@ function MiniRoomCharacter() {
   return (
     <div
       className="cy-miniroom-stage"
+      ref={stageRef}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
       <img className="cy-miniroom-bg" src={asset(profile.miniroom.src)} alt={profile.miniroom.alt} />
 
-      {furnitureItems.map(item => (
-        <img
-          key={item.id}
-          className="cy-miniroom-furniture"
-          src={asset(item.src)}
-          alt={item.alt}
-          draggable={false}
-          style={{
-            left: `${item.x}%`,
-            top: `${item.y}%`,
-            height: `${item.heightPercent}%`
-          }}
-        />
-      ))}
+      {furnitureItems.map(item => {
+        const placed = layout[item.id];
+        return (
+          <div
+            key={item.id}
+            className={"cy-miniroom-furniture-wrap" + (editMode ? " is-editable" : "")}
+            style={{ left: `${placed.x}%`, top: `${placed.y}%`, height: `${item.heightPercent}%` }}
+            onMouseDown={startDrag(item.id)}
+          >
+            <img
+              className="cy-miniroom-furniture"
+              src={asset(item.src)}
+              alt={item.alt}
+              draggable={false}
+              style={{ transform: `scaleX(${placed.flip ? -1 : 1})` }}
+            />
+            {editMode ? (
+              <div className="cy-edit-tag">
+                <span>{item.id} · {placed.x.toFixed(1)}, {placed.y.toFixed(1)}</span>
+                <button
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation();
+                    toggleFlip(item.id);
+                  }}
+                  title="좌우 반전"
+                >
+                  ⇋
+                </button>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
 
-      {hovering ? (
+      {editMode ? (
+        <div
+          className="cy-miniroom-character-tag"
+          style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+        >
+          캐릭터 · {pos.x.toFixed(1)}, {pos.y.toFixed(1)}
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        className="cy-miniroom-edit-toggle"
+        onClick={() => setEditMode(v => !v)}
+      >
+        {editMode ? "편집모드 끄기" : "편집모드"}
+      </button>
+
+      {hovering && !editMode ? (
         <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
       ) : null}
 

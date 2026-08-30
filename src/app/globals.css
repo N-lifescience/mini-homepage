@@ -532,14 +532,79 @@ body.lt-intro-open {
   height: 100%;
   object-fit: cover;
 }
-.cy-miniroom-stage .cy-miniroom-furniture {
+.cy-miniroom-stage .cy-miniroom-furniture-wrap {
   position: absolute;
   transform: translate(-50%, -100%);
   width: auto;
-  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
   pointer-events: none;
   z-index: 2;
   user-select: none;
+}
+.cy-miniroom-stage .cy-miniroom-furniture-wrap.is-editable {
+  pointer-events: auto;
+  cursor: grab;
+}
+.cy-miniroom-stage .cy-miniroom-furniture {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
+}
+.cy-edit-tag {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(10, 5, 18, 0.9);
+  color: #7CF7C4;
+  font-size: 0.6rem;
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(124, 247, 196, 0.4);
+  white-space: nowrap;
+  z-index: 6;
+}
+.cy-edit-tag button {
+  background: rgba(255, 214, 10, 0.15);
+  border: 1px solid rgba(255, 214, 10, 0.5);
+  color: #FFD60A;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.cy-miniroom-character-tag {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  background: rgba(10, 5, 18, 0.9);
+  color: #B14EFF;
+  font-size: 0.6rem;
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(177, 78, 255, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+}
+.cy-miniroom-edit-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(10, 5, 18, 0.85);
+  color: #F3EAFF;
+  font-size: 0.65rem;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 214, 10, 0.4);
+  cursor: pointer;
+  z-index: 7;
 }
 .cy-miniroom-hint {
   position: absolute;
@@ -563,15 +628,22 @@ body.lt-intro-open {
 }
 .cy-miniroom-stage .cy-miniroom-character {
   position: absolute;
-  height: 24%;
-  min-height: 46px;
-  max-height: 96px;
+  height: 21.6%;
+  min-height: 41px;
+  max-height: 86px;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition: left 0.12s linear, top 0.12s linear;
   z-index: 4;
+}
+.cy-miniroom-stage .cy-miniroom-character:focus-visible img {
+  outline: 2px solid rgba(255, 214, 10, 0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .cy-miniroom-stage .cy-miniroom-character img {
   display: block;
