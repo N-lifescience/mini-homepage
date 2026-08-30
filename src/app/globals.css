@@ -66,7 +66,12 @@ body.lt-intro-open {
   font-weight: 800;
   line-height: 1.05;
   color: var(--ink);
-  text-shadow: 0 3px 22px rgba(244,247,244,0.86), 0 1px 1px rgba(244,247,244,0.95);
+  -webkit-text-stroke: 1px #2D0B4E;
+  text-shadow:
+    -1px -1px 0 #2D0B4E, 1px -1px 0 #2D0B4E, -1px 1px 0 #2D0B4E, 1px 1px 0 #2D0B4E,
+    0 0 16px rgba(255,255,255,0.95),
+    0 0 36px rgba(255,255,255,0.7),
+    0 0 60px rgba(177,78,255,0.55);
 }
 
 .lt-intro-copy {
@@ -76,7 +81,12 @@ body.lt-intro-open {
   font-size: clamp(1.08rem, 2.2vw, 1.6rem);
   font-weight: 800;
   line-height: 1.48;
-  text-shadow: 0 3px 22px rgba(244,247,244,0.86), 0 1px 1px rgba(244,247,244,0.95);
+  -webkit-text-stroke: 0.75px #2D0B4E;
+  text-shadow:
+    -0.75px -0.75px 0 #2D0B4E, 0.75px -0.75px 0 #2D0B4E, -0.75px 0.75px 0 #2D0B4E, 0.75px 0.75px 0 #2D0B4E,
+    0 0 10px rgba(255,255,255,0.95),
+    0 0 24px rgba(255,255,255,0.65),
+    0 0 42px rgba(177,78,255,0.5);
 }
 
 .lt-intro-cta {

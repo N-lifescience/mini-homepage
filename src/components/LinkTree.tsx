@@ -149,13 +149,31 @@ function initialFurnitureLayout(): FurnitureLayout {
   );
 }
 
-function MiniRoomCharacter() {
+function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
   const [pos, setPos] = useState({ x: 65, y: 88 });
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [modeIndex, setModeIndex] = useState(0);
   const [bubble, setBubble] = useState<string | null>(null);
   const [hovering, setHovering] = useState(false);
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* 인트로를 막 지나서 미니홈피에 처음 들어온 순간에만 인사 멘트를 자동으로 띄웁니다. */
+  const wasIntroSkipped = useRef(introSkipped);
+  useEffect(() => {
+    if (introSkipped && !wasIntroSkipped.current) {
+      const waveIndex = characterModes.findIndex(m => m.id === "waving");
+      if (waveIndex !== -1) {
+        const timer = setTimeout(() => {
+          setModeIndex(waveIndex);
+          setBubble(characterModes[waveIndex].lines[0]);
+          bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_DURATION_MS);
+        }, 400);
+        wasIntroSkipped.current = introSkipped;
+        return () => clearTimeout(timer);
+      }
+    }
+    wasIntroSkipped.current = introSkipped;
+  }, [introSkipped]);
 
   /* 편집모드: 가구를 드래그로 옮기고 좌우 반전을 미리 볼 수 있습니다.
      여기서 옮긴 값은 화면에서만 바뀌고 저장되지 않으니, 마음에 드는 좌표를
@@ -340,13 +358,13 @@ function MiniRoomCharacter() {
   );
 }
 
-function HomeTab() {
+function HomeTab({ introSkipped }: { introSkipped: boolean }) {
   return (
     <>
       <div className="cy-content-box cy-miniroom-box">
         <SectionTitle title="Mini Room" sub="미니룸" />
         <div className="cy-miniroom-inner">
-          <MiniRoomCharacter />
+          <MiniRoomCharacter introSkipped={introSkipped} />
         </div>
       </div>
 
@@ -820,7 +838,7 @@ export default function LinkTree() {
               </div>
 
               <div className="cy-right-content">
-                {activeTab === "home" && <HomeTab />}
+                {activeTab === "home" && <HomeTab introSkipped={introSkipped} />}
                 {activeTab === "profile" && <ProfileTab />}
                 {activeTab === "story" && <StoryTab />}
                 {activeTab === "board" && <BoardTab />}
