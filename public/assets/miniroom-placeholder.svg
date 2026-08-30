@@ -1,96 +1,164 @@
-<svg viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#180A2C"/>
-      <stop offset="100%" stop-color="#0D0714"/>
+    <linearGradient id="wallL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3A2160"/>
+      <stop offset="100%" stop-color="#241242"/>
     </linearGradient>
-    <linearGradient id="floor" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#241242"/>
-      <stop offset="100%" stop-color="#150826"/>
+    <linearGradient id="wallR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2E1850"/>
+      <stop offset="100%" stop-color="#1C0F35"/>
     </linearGradient>
-    <linearGradient id="deskTop" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#3A1F63"/>
-      <stop offset="100%" stop-color="#2A1745"/>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#150826"/>
+      <stop offset="100%" stop-color="#0A0512"/>
     </linearGradient>
-    <linearGradient id="deskSide" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1C0F2E"/>
-      <stop offset="100%" stop-color="#120819"/>
-    </linearGradient>
-    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#B14EFF"/>
-      <stop offset="100%" stop-color="#FFD60A"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#B14EFF" stop-opacity="0.35"/>
+    <radialGradient id="apexGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD60A" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#B14EFF" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#B14EFF" stop-opacity="0"/>
     </radialGradient>
     <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="8"/>
+      <feGaussianBlur stdDeviation="10"/>
     </filter>
+    <filter id="soft2" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+
+    <!-- shared shading for furniture: top / left / right faces -->
+    <linearGradient id="topFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C9A6FF"/>
+      <stop offset="100%" stop-color="#A876E8"/>
+    </linearGradient>
+    <linearGradient id="leftFace" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6B4AA0"/>
+      <stop offset="100%" stop-color="#54367F"/>
+    </linearGradient>
+    <linearGradient id="rightFace" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4A3070"/>
+      <stop offset="100%" stop-color="#38235A"/>
+    </linearGradient>
+    <radialGradient id="liquidYellow" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFEA8A"/>
+      <stop offset="100%" stop-color="#FFD60A"/>
+    </radialGradient>
+    <radialGradient id="liquidPurple" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#E3B8FF"/>
+      <stop offset="100%" stop-color="#B14EFF"/>
+    </radialGradient>
   </defs>
 
-  <rect width="600" height="340" fill="url(#bg)"/>
+  <rect width="600" height="300" fill="#0A0512"/>
 
-  <!-- back wall grid -->
-  <g stroke="#3A1F63" stroke-width="1" opacity="0.5">
-    <line x1="0" y1="40" x2="600" y2="40"/>
-    <line x1="0" y1="90" x2="600" y2="90"/>
-    <line x1="0" y1="140" x2="600" y2="140"/>
-    <line x1="80" y1="0" x2="80" y2="200"/>
-    <line x1="200" y1="0" x2="200" y2="200"/>
-    <line x1="320" y1="0" x2="320" y2="200"/>
-    <line x1="440" y1="0" x2="440" y2="200"/>
-    <line x1="520" y1="0" x2="520" y2="200"/>
+  <!-- room shell: two walls + floor meeting at a single apex -->
+  <polygon points="0,0 300,78 0,300" fill="url(#wallL)"/>
+  <polygon points="600,0 300,78 600,300" fill="url(#wallR)"/>
+  <polygon points="300,78 0,300 600,300" fill="url(#floor)"/>
+
+  <g stroke="#B14EFF" stroke-opacity="0.22" stroke-width="1">
+    <line x1="60" y1="0" x2="300" y2="78"/>
+    <line x1="150" y1="0" x2="300" y2="78"/>
+    <line x1="240" y1="0" x2="300" y2="78"/>
+    <line x1="360" y1="0" x2="300" y2="78"/>
+    <line x1="450" y1="0" x2="300" y2="78"/>
+    <line x1="540" y1="0" x2="300" y2="78"/>
+  </g>
+  <g stroke="#B14EFF" stroke-opacity="0.15" stroke-width="1">
+    <line x1="0" y1="60" x2="300" y2="78"/>
+    <line x1="0" y1="140" x2="300" y2="78"/>
+    <line x1="0" y1="220" x2="300" y2="78"/>
+    <line x1="600" y1="60" x2="300" y2="78"/>
+    <line x1="600" y1="140" x2="300" y2="78"/>
+    <line x1="600" y1="220" x2="300" y2="78"/>
+  </g>
+  <g stroke="#FFD60A" stroke-opacity="0.22" stroke-width="1">
+    <line x1="90" y1="300" x2="300" y2="78"/>
+    <line x1="210" y1="300" x2="300" y2="78"/>
+    <line x1="390" y1="300" x2="300" y2="78"/>
+    <line x1="510" y1="300" x2="300" y2="78"/>
   </g>
 
-  <!-- isometric floor -->
-  <polygon points="0,200 600,200 600,340 0,340" fill="url(#floor)"/>
-  <g stroke="#3A1F63" stroke-width="1" opacity="0.5">
-    <line x1="0" y1="240" x2="600" y2="240"/>
-    <line x1="0" y1="280" x2="600" y2="280"/>
-    <line x1="60" y1="200" x2="0" y2="340"/>
-    <line x1="200" y1="200" x2="160" y2="340"/>
-    <line x1="340" y1="200" x2="340" y2="340"/>
-    <line x1="480" y1="200" x2="520" y2="340"/>
+  <circle cx="300" cy="78" r="130" fill="url(#apexGlow)" filter="url(#soft)"/>
+
+  <g stroke="#FFD60A" stroke-opacity="0.55" stroke-width="2" fill="none">
+    <line x1="300" y1="78" x2="0" y2="300"/>
+    <line x1="300" y1="78" x2="600" y2="300"/>
+  </g>
+  <line x1="300" y1="0" x2="300" y2="78" stroke="#B14EFF" stroke-opacity="0.5" stroke-width="2"/>
+
+  <!-- wall plaque: N LAB -->
+  <g>
+    <rect x="255" y="30" width="90" height="34" rx="3" fill="#0A0512" stroke="#FFD60A" stroke-opacity="0.6" stroke-width="1.5"/>
+    <text x="300" y="46" text-anchor="middle" font-family="'Trebuchet MS', sans-serif" font-weight="700" font-size="12" fill="#FFD60A">N LAB</text>
+    <path d="M 268 55 q 4 -6 8 0 q 4 6 8 0 q 4 -6 8 0 q 4 6 8 0" stroke="#B14EFF" stroke-width="1.5" fill="none"/>
   </g>
 
-  <!-- ambient glow -->
-  <circle cx="440" cy="90" r="120" fill="url(#glow)" filter="url(#soft)"/>
+  <!-- ===== furniture: lab bench, bottom-left ===== -->
+  <ellipse cx="160" cy="298" rx="80" ry="10" fill="#000" opacity="0.35" filter="url(#soft2)"/>
+  <polygon points="150,205 96,232 168,268 222,241" fill="url(#topFace)"/>
+  <polygon points="150,260 96,287 96,232 150,205" fill="url(#leftFace)"/>
+  <polygon points="150,260 222,296 222,241 150,205" fill="url(#rightFace)"/>
+  <!-- cabinet door lines -->
+  <line x1="150" y1="260" x2="150" y2="205" stroke="#2A1745" stroke-opacity="0.5" stroke-width="1"/>
+  <line x1="123" y1="273" x2="123" y2="219" stroke="#2A1745" stroke-opacity="0.4" stroke-width="1"/>
+  <line x1="186" y1="278" x2="186" y2="223" stroke="#2A1745" stroke-opacity="0.35" stroke-width="1"/>
+  <!-- flasks on the bench -->
+  <g>
+    <path d="M 118 233 l -4 14 q -2 6 6 6 h 10 q 8 0 6 -6 l -4 -14 z" fill="url(#liquidPurple)" stroke="#1C0F2E" stroke-width="1"/>
+    <rect x="114" y="228" width="10" height="6" fill="#1C0F2E"/>
+    <path d="M 150 224 l -3 11 q -2 5 5 5 h 8 q 7 0 5 -5 l -3 -11 z" fill="url(#liquidYellow)" stroke="#1C0F2E" stroke-width="1"/>
+    <rect x="147" y="220" width="8" height="5" fill="#1C0F2E"/>
+    <circle cx="121" cy="240" r="8" fill="#B14EFF" opacity="0.35" filter="url(#soft2)"/>
+    <circle cx="152" cy="232" r="7" fill="#FFD60A" opacity="0.35" filter="url(#soft2)"/>
+  </g>
 
-  <!-- window -->
-  <rect x="410" y="30" width="140" height="90" rx="6" fill="#0D0714" stroke="#FFD60A" stroke-opacity="0.5" stroke-width="2"/>
-  <line x1="480" y1="30" x2="480" y2="120" stroke="#FFD60A" stroke-opacity="0.3" stroke-width="2"/>
-  <line x1="410" y1="75" x2="550" y2="75" stroke="#FFD60A" stroke-opacity="0.3" stroke-width="2"/>
-  <circle cx="445" cy="60" r="22" fill="url(#screen)" opacity="0.6" filter="url(#soft)"/>
+  <!-- ===== furniture: bookshelf with specimen jars, bottom-right ===== -->
+  <ellipse cx="440" cy="290" rx="65" ry="9" fill="#000" opacity="0.35" filter="url(#soft2)"/>
+  <polygon points="430,165 394,183 448,210 484,192" fill="url(#topFace)"/>
+  <polygon points="430,255 394,273 394,183 430,165" fill="url(#leftFace)"/>
+  <polygon points="430,255 484,282 484,192 430,165" fill="url(#rightFace)"/>
+  <!-- shelves -->
+  <g stroke="#2A1745" stroke-opacity="0.5" stroke-width="1.5">
+    <line x1="394" y1="212" x2="430" y2="230"/>
+    <line x1="430" y1="230" x2="484" y2="219"/>
+    <line x1="394" y1="242" x2="430" y2="260"/>
+    <line x1="430" y1="260" x2="484" y2="249"/>
+  </g>
+  <!-- jars on shelves -->
+  <circle cx="410" cy="200" r="6" fill="url(#liquidPurple)" stroke="#1C0F2E" stroke-width="1"/>
+  <circle cx="452" cy="203" r="6" fill="url(#liquidYellow)" stroke="#1C0F2E" stroke-width="1"/>
+  <circle cx="412" cy="230" r="6" fill="url(#liquidYellow)" stroke="#1C0F2E" stroke-width="1"/>
+  <circle cx="455" cy="233" r="6" fill="url(#liquidPurple)" stroke="#1C0F2E" stroke-width="1"/>
 
-  <!-- desk -->
-  <polygon points="70,230 340,230 300,270 30,270" fill="url(#deskTop)" stroke="#B14EFF" stroke-opacity="0.4"/>
-  <polygon points="30,270 60,270 60,320 30,320" fill="url(#deskSide)"/>
-  <polygon points="300,270 330,270 330,320 300,320" fill="url(#deskSide)"/>
+  <!-- ===== centerpiece: table with DNA model + bunsen burner ===== -->
+  <ellipse cx="300" cy="298" rx="55" ry="9" fill="#000" opacity="0.4" filter="url(#soft2)"/>
+  <polygon points="300,256 264,274 300,292 336,274" fill="url(#topFace)"/>
+  <polygon points="300,296 264,314 264,274 300,256" fill="url(#leftFace)"/>
+  <polygon points="300,296 336,314 336,274 300,256" fill="url(#rightFace)"/>
 
-  <!-- monitor -->
-  <polygon points="130,175 230,175 245,225 115,225" fill="#1C0F2E" stroke="#B14EFF" stroke-opacity="0.6" stroke-width="2"/>
-  <polygon points="142,182 218,182 228,218 132,218" fill="url(#screen)" opacity="0.85"/>
-  <text x="180" y="205" text-anchor="middle" font-family="'Trebuchet MS', sans-serif" font-weight="700" font-size="26" fill="#0D0714">N</text>
-  <rect x="170" y="225" width="20" height="14" fill="#1C0F2E"/>
+  <!-- DNA helix standing on the table -->
+  <g transform="translate(282,150)">
+    <path d="M 0 106 C 14 96 -14 86 0 76 C 14 66 -14 56 0 46 C 14 36 -14 26 0 16 C 14 6 -14 -4 0 -14"
+          stroke="#B14EFF" stroke-width="2.5" fill="none"/>
+    <path d="M 0 106 C -14 96 14 86 0 76 C -14 66 14 56 0 46 C -14 36 14 26 0 16 C -14 6 14 -4 0 -14"
+          stroke="#FFD60A" stroke-width="2.5" fill="none"/>
+    <g stroke="#F3EAFF" stroke-opacity="0.6" stroke-width="1.5">
+      <line x1="-7" y1="96" x2="7" y2="96"/>
+      <line x1="7" y1="76" x2="-7" y2="76"/>
+      <line x1="-7" y1="56" x2="7" y2="56"/>
+      <line x1="7" y1="36" x2="-7" y2="36"/>
+      <line x1="-7" y1="16" x2="7" y2="16"/>
+      <line x1="7" y1="-4" x2="-7" y2="-4"/>
+    </g>
+  </g>
 
-  <!-- desk lamp -->
-  <line x1="290" y1="230" x2="290" y2="195" stroke="#5C3B8C" stroke-width="4" stroke-linecap="round"/>
-  <line x1="290" y1="195" x2="265" y2="180" stroke="#5C3B8C" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="262" cy="178" r="8" fill="#FFD60A"/>
-  <circle cx="262" cy="178" r="16" fill="#FFD60A" opacity="0.3" filter="url(#soft)"/>
+  <!-- bunsen burner + flask beside the helix -->
+  <g>
+    <rect x="322" y="270" width="18" height="6" rx="1" fill="#1C0F2E"/>
+    <rect x="328" y="252" width="6" height="18" fill="#5C3B8C"/>
+    <path d="M 331 252 q -5 -10 0 -18 q 5 8 0 18 z" fill="url(#liquidYellow)" opacity="0.9"/>
+    <path d="M 331 250 q -3 -6 0 -11 q 3 5 0 11 z" fill="#fff" opacity="0.8"/>
+    <circle cx="331" cy="246" r="14" fill="#FFD60A" opacity="0.25" filter="url(#soft2)"/>
+  </g>
 
-  <!-- plant -->
-  <rect x="500" y="255" width="34" height="30" rx="4" fill="#3A1F63"/>
-  <path d="M517 255 C505 235 505 215 517 200 C529 215 529 235 517 255 Z" fill="#5C3B8C"/>
-  <path d="M517 255 C500 240 495 222 505 205 C518 218 522 238 517 255 Z" fill="#B14EFF" opacity="0.85"/>
-  <path d="M517 255 C534 240 539 222 529 205 C516 218 512 238 517 255 Z" fill="#FFD60A" opacity="0.8"/>
-
-  <!-- chair -->
-  <rect x="95" y="255" width="14" height="55" rx="4" fill="#2A1745"/>
-  <rect x="80" y="245" width="44" height="14" rx="4" fill="#3A1F63"/>
-
-  <text x="300" y="325" text-anchor="middle" font-family="monospace" font-size="14" letter-spacing="4" fill="#9D89C9">MINI ROOM</text>
-
-  <rect x="1" y="1" width="598" height="338" fill="none" stroke="#FFD60A" stroke-opacity="0.25" stroke-width="2"/>
+  <rect x="1" y="1" width="598" height="298" fill="none" stroke="#FFD60A" stroke-opacity="0.2" stroke-width="2"/>
 </svg>
