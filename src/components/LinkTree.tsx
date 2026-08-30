@@ -546,7 +546,7 @@ function GuestbookForm() {
       await addGuestbookEntry(author, text);
       setAuthor("");
       setText("");
-      setMessage({ kind: "ok", text: "한줄평을 남겼어요. 고맙습니다!" });
+      setMessage({ kind: "ok", text: "방명록을 남겼어요. 고맙습니다!" });
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "남기지 못했어요. 잠시 뒤 다시 시도해 주세요." });
     } finally {
@@ -560,7 +560,7 @@ function GuestbookForm() {
     return (
       <div className="cy-guestbook-login">
         <button type="button" className="cy-gb-google" onClick={login} disabled={loggingIn}>
-          {loggingIn ? "로그인 중…" : "Google로 로그인하고 한줄평 남기기"}
+          {loggingIn ? "로그인 중…" : "Google로 로그인하고 방명록 작성하기"}
         </button>
         {message ? (
           <span className={`cy-gb-message${message.kind === "error" ? " is-error" : ""}`}>{message.text}</span>
@@ -589,9 +589,9 @@ function GuestbookForm() {
         className="cy-gb-text"
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="한줄평을 남겨주세요"
+        placeholder="방명록을 남겨주세요"
         maxLength={GUESTBOOK_LIMITS.text}
-        aria-label="한줄평"
+        aria-label="방명록"
       />
       <button className="cy-gb-submit" type="submit" disabled={sending}>
         {sending ? "전송중" : "남기기"}
@@ -623,7 +623,7 @@ function GuestbookList() {
 
   const removeEntry = async (id: string) => {
     if (deletingId) return;
-    if (!window.confirm("이 한줄평을 지울까요?")) return;
+    if (!window.confirm("이 방명록을 지울까요?")) return;
     setDeletingId(id);
     try {
       await deleteGuestbookEntry(id);
@@ -648,11 +648,11 @@ function GuestbookList() {
 
   return (
     <>
-      {live && remote === null ? <div className="cy-gb-loading">한줄평을 불러오는 중…</div> : null}
+      {live && remote === null ? <div className="cy-gb-loading">방명록을 불러오는 중…</div> : null}
 
       <div className="cy-guestbook-list">
         {entries.length === 0 ? (
-          <div className="cy-gb-loading">아직 한줄평이 없어요. 첫 줄을 남겨 주세요!</div>
+          <div className="cy-gb-loading">아직 방명록이 없어요. 첫 줄을 남겨 주세요!</div>
         ) : (
           pageEntries.map(c => (
             <div key={c.key} className="cy-guestbook-item">

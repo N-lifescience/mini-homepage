@@ -1,4 +1,4 @@
-/* Firestore 한줄평 저장소입니다.
+/* Firestore 방명록 저장소입니다.
    설정값은 빌드 시 NEXT_PUBLIC_FIREBASE_* 환경변수로 주입됩니다.
    Firebase 웹 설정값은 비밀키가 아니라 프로젝트 식별자이며, 배포된 JS 에 그대로 들어가는 것이
    정상적인 사용법입니다. 실제 접근 제어는 firestore.rules 가 담당합니다. */
@@ -37,7 +37,7 @@ const config = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-/* 설정이 없으면 Firestore 를 쓰지 않고, 화면은 linktree.ts 의 예시 한줄평으로 대체됩니다. */
+/* 설정이 없으면 Firestore 를 쓰지 않고, 화면은 linktree.ts 의 예시 방명록으로 대체됩니다. */
 export const isGuestbookEnabled = Boolean(config.apiKey && config.projectId);
 
 export const GUESTBOOK_LIMITS = { author: 20, text: 100 } as const;
@@ -113,7 +113,7 @@ function formatDate(value: unknown) {
    counters/site 문서 하나에 total, today, day 를 담아 둡니다.
    --------------------------------------------------------------- */
 
-/* 한줄평과 같은 Firebase 설정을 씁니다. */
+/* 방명록과 같은 Firebase 설정을 씁니다. */
 export const isCounterEnabled = isGuestbookEnabled;
 
 export type VisitCounts = { total: number; today: number };
@@ -151,7 +151,7 @@ export async function recordVisit(): Promise<VisitCounts> {
   });
 }
 
-/* 한줄평을 실시간으로 구독합니다. 정리 함수를 돌려줍니다. */
+/* 방명록을 실시간으로 구독합니다. 정리 함수를 돌려줍니다. */
 export function subscribeGuestbook(
   count: number,
   onData: (entries: RemoteEntry[]) => void,
@@ -183,16 +183,16 @@ export function subscribeGuestbook(
 
 export async function addGuestbookEntry(author: string, text: string) {
   const store = getDb();
-  if (!store) throw new Error("한줄평 기능이 설정되지 않았습니다.");
+  if (!store) throw new Error("방명록 기능이 설정되지 않았습니다.");
   const user = getAuthInstance()?.currentUser;
   if (!user) throw new Error("구글 로그인 후 남길 수 있어요.");
 
   const trimmedAuthor = author.trim();
   const trimmedText = text.trim();
 
-  if (!trimmedAuthor || !trimmedText) throw new Error("이름과 한줄평을 모두 적어 주세요.");
+  if (!trimmedAuthor || !trimmedText) throw new Error("이름과 방명록을 모두 적어 주세요.");
   if (trimmedAuthor.length > GUESTBOOK_LIMITS.author) throw new Error(`이름은 ${GUESTBOOK_LIMITS.author}자까지 쓸 수 있어요.`);
-  if (trimmedText.length > GUESTBOOK_LIMITS.text) throw new Error(`한줄평은 ${GUESTBOOK_LIMITS.text}자까지 쓸 수 있어요.`);
+  if (trimmedText.length > GUESTBOOK_LIMITS.text) throw new Error(`방명록은 ${GUESTBOOK_LIMITS.text}자까지 쓸 수 있어요.`);
 
   /* approved 는 지금은 항상 true 입니다. 나중에 승인제로 바꾸려면
      이 값을 false 로 두고 firestore.rules 의 read 조건만 바꾸면 됩니다. */
@@ -208,7 +208,7 @@ export async function addGuestbookEntry(author: string, text: string) {
 /* 본인이 쓴 글만 지울 수 있습니다 (firestore.rules 에서도 같은 조건을 확인합니다). */
 export async function deleteGuestbookEntry(id: string) {
   const store = getDb();
-  if (!store) throw new Error("한줄평 기능이 설정되지 않았습니다.");
+  if (!store) throw new Error("방명록 기능이 설정되지 않았습니다.");
   if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 지울 수 있어요.");
   await deleteDoc(doc(store, "guestbook", id));
 }

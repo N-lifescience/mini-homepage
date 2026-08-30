@@ -1046,7 +1046,7 @@ body.lt-intro-open {
 .cg-delete:hover:not(:disabled) { color: #c0392b; }
 .cg-delete:disabled { opacity: 0.5; cursor: default; }
 
-/* 한줄평 페이지 번호 */
+/* 방명록 페이지 번호 */
 .cy-gb-pagination {
   display: flex;
   gap: 4px;
@@ -1076,7 +1076,7 @@ body.lt-intro-open {
   color: #fff;
 }
 
-/* 한줄평 입력 폼 */
+/* 방명록 입력 폼 */
 .cy-gb-loading {
   font-size: 0.75rem;
   color: #999;
