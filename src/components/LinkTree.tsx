@@ -145,7 +145,7 @@ function initialFurnitureLayout(): FurnitureLayout {
 }
 
 function MiniRoomCharacter() {
-  const [pos, setPos] = useState({ x: 50, y: 68 });
+  const [pos, setPos] = useState({ x: 65, y: 88 });
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [modeIndex, setModeIndex] = useState(0);
   const [bubble, setBubble] = useState<string | null>(null);
