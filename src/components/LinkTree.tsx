@@ -7,6 +7,7 @@ import BgmPlayer, { type BgmHandle } from "@/components/BgmPlayer";
 import {
   GUESTBOOK_LIMITS,
   addGuestbookEntry,
+  deleteGuestbookEntry,
   isCounterEnabled,
   isGuestbookEnabled,
   recordVisit,
@@ -592,11 +593,28 @@ function GuestbookList() {
   const [remote, setRemote] = useState<RemoteEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [page, setPage] = useState(0);
+  const [myUid, setMyUid] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isGuestbookEnabled) return;
     return subscribeGuestbook(GUESTBOOK_FETCH_LIMIT, setRemote, () => setFailed(true));
   }, []);
+
+  useEffect(() => subscribeAuthState(user => setMyUid(user?.uid ?? null)), []);
+
+  const removeEntry = async (id: string) => {
+    if (deletingId) return;
+    if (!window.confirm("이 한줄평을 지울까요?")) return;
+    setDeletingId(id);
+    try {
+      await deleteGuestbookEntry(id);
+    } catch {
+      window.alert("지우지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const live = isGuestbookEnabled && !failed;
   const entries = live && remote
@@ -625,6 +643,16 @@ function GuestbookList() {
               </span>
               <span className="cg-text">{c.text}</span>
               <span className="cg-date">({c.date})</span>
+              {live && myUid && "uid" in c && c.uid === myUid ? (
+                <button
+                  type="button"
+                  className="cg-delete"
+                  onClick={() => removeEntry(c.id)}
+                  disabled={deletingId === c.id}
+                >
+                  삭제
+                </button>
+              ) : null}
             </div>
           ))
         )}

@@ -87,7 +87,7 @@ body.lt-intro-open {
   min-height: 52px;
   margin-top: 1.15rem;
   padding: 0 1.45rem;
-  border: 1px solid rgba(244,247,244,0.62);
+  border: 3px solid var(--cream);
   border-radius: 999px;
   background: var(--brown);
   color: var(--cream);
@@ -1022,6 +1022,19 @@ body.lt-intro-open {
 .cg-colon { color: #888; margin: 0 4px; }
 .cg-text { color: #444; }
 .cg-date { font-family: "Tahoma"; font-size: 0.65rem; color: #999; margin-left: 5px; }
+.cg-delete {
+  font-family: inherit;
+  font-size: 0.65rem;
+  color: #999;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 6px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cg-delete:hover:not(:disabled) { color: #c0392b; }
+.cg-delete:disabled { opacity: 0.5; cursor: default; }
 
 /* 한줄평 페이지 번호 */
 .cy-gb-pagination {

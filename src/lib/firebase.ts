@@ -6,6 +6,7 @@ import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getFirestore,
   limit as fsLimit,
@@ -46,6 +47,8 @@ export type RemoteEntry = {
   author: string;
   text: string;
   date: string;
+  /* 쓴 사람의 구글 uid 입니다. 본인 글에만 삭제 버튼을 보여 주는 데 씁니다. */
+  uid: string;
 };
 
 let app: FirebaseApp | null = null;
@@ -168,7 +171,8 @@ export function subscribeGuestbook(
             id: doc.id,
             author: String(data.author ?? ""),
             text: String(data.text ?? ""),
-            date: formatDate(data.createdAt)
+            date: formatDate(data.createdAt),
+            uid: String(data.uid ?? "")
           };
         })
       );
@@ -180,7 +184,8 @@ export function subscribeGuestbook(
 export async function addGuestbookEntry(author: string, text: string) {
   const store = getDb();
   if (!store) throw new Error("한줄평 기능이 설정되지 않았습니다.");
-  if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 남길 수 있어요.");
+  const user = getAuthInstance()?.currentUser;
+  if (!user) throw new Error("구글 로그인 후 남길 수 있어요.");
 
   const trimmedAuthor = author.trim();
   const trimmedText = text.trim();
@@ -195,6 +200,15 @@ export async function addGuestbookEntry(author: string, text: string) {
     author: trimmedAuthor,
     text: trimmedText,
     approved: true,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    uid: user.uid
   });
+}
+
+/* 본인이 쓴 글만 지울 수 있습니다 (firestore.rules 에서도 같은 조건을 확인합니다). */
+export async function deleteGuestbookEntry(id: string) {
+  const store = getDb();
+  if (!store) throw new Error("한줄평 기능이 설정되지 않았습니다.");
+  if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 지울 수 있어요.");
+  await deleteDoc(doc(store, "guestbook", id));
 }
