@@ -32,8 +32,6 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
   const [blocked, setBlocked] = useState(false);
   const [failed, setFailed] = useState(false);
   const [errorCode, setErrorCode] = useState<number | null>(null);
-  /* 좁은 화면에서는 유튜브 화면을 실제로 보여 줍니다. 아래 마운트 효과에서 정합니다. */
-  const [showStage, setShowStage] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
@@ -49,12 +47,6 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
     let cancelled = false;
     let player: YouTubePlayer | null = null;
 
-    /* 인스타그램 같은 앱 안의 브라우저는 다른 사이트 iframe 안의 영상을
-       직접 탭해야만 재생을 허용합니다. 부모 페이지의 버튼은 인정되지 않습니다.
-       그래서 좁은 화면에서는 유튜브 화면을 보여 주고 재생 버튼도 켭니다. */
-    const narrow = window.matchMedia("(max-width: 900px)").matches;
-    setShowStage(narrow);
-
     loadYouTubeApi()
       .then(api => {
         if (cancelled || !stageRef.current) return;
@@ -62,7 +54,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
         player = new api.Player(stageRef.current, {
           videoId: bgmTracks[0].videoId,
           playerVars: {
-            controls: narrow ? 1 : 0,
+            controls: 0,
             disablekb: 1,
             modestbranding: 1,
             rel: 0,
@@ -283,15 +275,10 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
         <div className="cy-bgm-note">재생 버튼을 눌러 주세요.</div>
       ) : null}
 
-      {/* 유튜브가 이 자리를 iframe 으로 바꿉니다.
-          넓은 화면에서는 소리만 쓰므로 화면 밖에 두고, 좁은 화면에서는 보여 줍니다. */}
-      <div className={"cy-bgm-stage" + (showStage ? " is-shown" : "")}>
+      {/* 유튜브가 이 자리를 iframe 으로 바꿉니다. 소리만 쓰므로 항상 화면 밖에 둡니다. */}
+      <div className="cy-bgm-stage">
         <div ref={stageRef} />
       </div>
-
-      {showStage ? (
-        <div className="cy-bgm-hint">앱 안에서 열었다면 위 화면을 눌러 주세요.</div>
-      ) : null}
     </div>
   );
 }

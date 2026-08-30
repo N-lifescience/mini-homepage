@@ -420,33 +420,6 @@ body.lt-intro-open {
   pointer-events: none;
 }
 
-/* 앱 안의 브라우저는 유튜브 화면을 직접 눌러야 재생됩니다. 그때는 실제로 보여 줍니다. */
-.cy-bgm-stage.is-shown {
-  position: static;
-  width: 100%;
-  /* 폰에서 화면을 너무 많이 차지하지 않도록 가로를 묶어 둡니다. */
-  max-width: 260px;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  margin-top: 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  overflow: hidden;
-  pointer-events: auto;
-}
-.cy-bgm-stage.is-shown iframe {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-.cy-bgm-hint {
-  margin-top: 4px;
-  font-size: 0.65rem;
-  color: #888;
-}
-
 /* ------------------------------------- */
 /* RIGHT PANEL                           */
 /* ------------------------------------- */
@@ -558,6 +531,15 @@ body.lt-intro-open {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.cy-miniroom-stage .cy-miniroom-furniture {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  width: auto;
+  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+  z-index: 2;
+  user-select: none;
 }
 .cy-miniroom-hint {
   position: absolute;

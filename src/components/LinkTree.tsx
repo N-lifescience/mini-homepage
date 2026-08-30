@@ -25,6 +25,7 @@ import {
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
 import { characterModes } from "@/config/character";
+import { furnitureItems } from "@/config/furniture";
 
 const ALL_TABS = ["home", "profile", "story", "board", "photo"] as const;
 type TabName = (typeof ALL_TABS)[number];
@@ -184,6 +185,21 @@ function MiniRoomCharacter() {
       onMouseLeave={() => setHovering(false)}
     >
       <img className="cy-miniroom-bg" src={asset(profile.miniroom.src)} alt={profile.miniroom.alt} />
+
+      {furnitureItems.map(item => (
+        <img
+          key={item.id}
+          className="cy-miniroom-furniture"
+          src={asset(item.src)}
+          alt={item.alt}
+          draggable={false}
+          style={{
+            left: `${item.x}%`,
+            top: `${item.y}%`,
+            height: `${item.heightPercent}%`
+          }}
+        />
+      ))}
 
       {hovering ? (
         <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
