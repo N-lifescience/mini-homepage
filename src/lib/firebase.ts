@@ -15,6 +15,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  where,
   type Firestore,
   type Timestamp
 } from "firebase/firestore";
@@ -49,6 +50,10 @@ export type RemoteEntry = {
   date: string;
   /* 쓴 사람의 구글 uid 입니다. 본인 글에만 삭제 버튼을 보여 주는 데 씁니다. */
   uid: string;
+  /* 비밀글이면 작성자 본인과 주인장에게만 보입니다. */
+  secret: boolean;
+  /* 정렬용 시각입니다. 서버 시간이 아직 안 붙은 순간에는 0 입니다. */
+  createdAtMs: number;
 };
 
 let app: FirebaseApp | null = null;
@@ -70,6 +75,15 @@ function getAuthInstance() {
   if (!isGuestbookEnabled) return null;
   if (!auth) auth = getAuth(getApp());
   return auth;
+}
+
+/* 사이트 콘텐츠 저장소(site-content.ts)에서도 같은 연결을 씁니다. */
+export function getStore() {
+  return getDb();
+}
+
+export function currentUser() {
+  return getAuthInstance()?.currentUser ?? null;
 }
 
 /* ---------------------------------------------------------------
@@ -151,37 +165,106 @@ export async function recordVisit(): Promise<VisitCounts> {
   });
 }
 
-/* 방명록을 실시간으로 구독합니다. 정리 함수를 돌려줍니다. */
+function toEntry(id: string, data: Record<string, unknown>): RemoteEntry {
+  const createdAt = data.createdAt as Timestamp | undefined;
+  return {
+    id,
+    author: String(data.author ?? ""),
+    text: String(data.text ?? ""),
+    date: formatDate(data.createdAt),
+    uid: String(data.uid ?? ""),
+    secret: data.secret === true,
+    createdAtMs: createdAt && typeof createdAt.toMillis === "function" ? createdAt.toMillis() : 0
+  };
+}
+
+/* 방명록을 실시간으로 구독합니다. 정리 함수를 돌려줍니다.
+
+   비밀글 때문에 목록을 한 번에 못 읽어옵니다. Firestore 는 "돌려줄 문서가 전부
+   읽기 허용인지" 를 쿼리 조건만 보고 미리 판단하기 때문에, 조건 없이 전체를 훑으면
+   비밀글이 섞일 수 있다고 보고 통째로 거부합니다. 그래서 읽을 수 있는 범위별로
+   쿼리를 나눠 걸고 여기서 합칩니다.
+
+   - 공개글: 누구나
+   - 내가 쓴 글: 로그인한 사람 본인 것 (비밀글 포함)
+   - 비밀글 전체: 주인장만 */
 export function subscribeGuestbook(
   count: number,
+  options: { uid: string | null; isOwner: boolean },
   onData: (entries: RemoteEntry[]) => void,
   onError: (error: Error) => void
 ) {
   const store = getDb();
   if (!store) return () => {};
 
-  const q = query(collection(store, "guestbook"), orderBy("createdAt", "desc"), fsLimit(count));
-  return onSnapshot(
-    q,
-    snapshot => {
-      onData(
-        snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            author: String(data.author ?? ""),
-            text: String(data.text ?? ""),
-            date: formatDate(data.createdAt),
-            uid: String(data.uid ?? "")
-          };
-        })
-      );
-    },
-    error => onError(error as Error)
-  );
+  const buckets = new Map<string, RemoteEntry[]>();
+  const emit = () => {
+    const merged = new Map<string, RemoteEntry>();
+    buckets.forEach(list => list.forEach(entry => merged.set(entry.id, entry)));
+    onData(
+      Array.from(merged.values())
+        .sort((a, b) => b.createdAtMs - a.createdAtMs)
+        .slice(0, count)
+    );
+  };
+
+  const listen = (key: string, q: Parameters<typeof onSnapshot>[0]) =>
+    onSnapshot(
+      q,
+      snapshot => {
+        buckets.set(
+          key,
+          snapshot.docs.map(d => toEntry(d.id, d.data() as Record<string, unknown>))
+        );
+        emit();
+      },
+      error => onError(error as Error)
+    );
+
+  const unsubscribes = [
+    listen(
+      "public",
+      query(
+        collection(store, "guestbook"),
+        where("secret", "==", false),
+        orderBy("createdAt", "desc"),
+        fsLimit(count)
+      )
+    )
+  ];
+
+  if (options.uid) {
+    unsubscribes.push(
+      listen(
+        "mine",
+        query(
+          collection(store, "guestbook"),
+          where("uid", "==", options.uid),
+          orderBy("createdAt", "desc"),
+          fsLimit(count)
+        )
+      )
+    );
+  }
+
+  if (options.isOwner) {
+    unsubscribes.push(
+      listen(
+        "secrets",
+        query(
+          collection(store, "guestbook"),
+          where("secret", "==", true),
+          orderBy("createdAt", "desc"),
+          fsLimit(count)
+        )
+      )
+    );
+  }
+
+  return () => unsubscribes.forEach(fn => fn());
 }
 
-export async function addGuestbookEntry(author: string, text: string) {
+export async function addGuestbookEntry(author: string, text: string, secret = false) {
   const store = getDb();
   if (!store) throw new Error("방명록 기능이 설정되지 않았습니다.");
   const user = getAuthInstance()?.currentUser;
@@ -201,11 +284,13 @@ export async function addGuestbookEntry(author: string, text: string) {
     text: trimmedText,
     approved: true,
     createdAt: serverTimestamp(),
-    uid: user.uid
+    uid: user.uid,
+    secret
   });
 }
 
-/* 본인이 쓴 글만 지울 수 있습니다 (firestore.rules 에서도 같은 조건을 확인합니다). */
+/* 본인이 쓴 글, 그리고 주인장은 남의 글도 지울 수 있습니다
+   (firestore.rules 에서도 같은 조건을 확인합니다). */
 export async function deleteGuestbookEntry(id: string) {
   const store = getDb();
   if (!store) throw new Error("방명록 기능이 설정되지 않았습니다.");

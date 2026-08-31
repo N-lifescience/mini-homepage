@@ -20,32 +20,23 @@ import {
 } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import {
-  boardPosts,
-  episodes,
   guestbook,
-  photos,
   profile,
-  profileSections,
   waveLinks
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
 import { characterModes } from "@/config/character";
 import { furnitureItems } from "@/config/furniture";
-
-const ALL_TABS = ["home", "profile", "story", "board", "photo"] as const;
-type TabName = (typeof ALL_TABS)[number];
-
-/* 연재물이 하나도 없으면 탭 자체를 숨깁니다. */
-const TABS: TabName[] = ALL_TABS.filter(tab => tab !== "story" || episodes.length > 0);
-
-/* 탭 버튼과 오른쪽 위 제목에 쓰는 이름표입니다. profile.ts 값을 따릅니다. */
-const NAV_LABELS: Record<TabName, string> = {
-  home: "홈",
-  profile: "프로필",
-  story: profile.storyLabel,
-  board: profile.boardLabel,
-  photo: profile.photoLabel
-};
+import {
+  newId,
+  useImages,
+  useSiteContent,
+  type BoardPost,
+  type ContentBlock,
+  type SiteContent,
+  type TabDef
+} from "@/lib/site-content";
+import { BlockList, EditableText } from "@/components/Editable";
 
 /* 진입 화면 셰이더 배경 설정입니다. 색은 theme.ts 를 따릅니다. */
 const spiralProps = {
@@ -89,13 +80,21 @@ function ChevronDown({ size = 18 }: { size?: number }) {
   );
 }
 
-function IntroOverlay({ onBrowse }: { onBrowse: () => void }) {
+function IntroOverlay({
+  title,
+  description,
+  onBrowse
+}: {
+  title: string;
+  description: string;
+  onBrowse: () => void;
+}) {
   return (
     <div className="lt-intro" style={introStyle}>
       <Spiral className="lt-intro-spiral" {...spiralProps} />
       <div className="lt-intro-card">
-        <span className="lt-intro-title">{profile.introTitle}</span>
-        <p className="lt-intro-copy">{profile.introDescription}</p>
+        <span className="lt-intro-title">{title}</span>
+        <p className="lt-intro-copy">{description}</p>
         <button type="button" className="lt-intro-cta" onClick={onBrowse}>
           모든 활동 구경하기
           <ChevronDown size={18} />
@@ -105,15 +104,7 @@ function IntroOverlay({ onBrowse }: { onBrowse: () => void }) {
   );
 }
 
-const TAB_TITLES: Record<TabName, string> = {
-  home: profile.catalogTitle,
-  profile: "프로필",
-  story: profile.storyLabel,
-  board: profile.boardLabel,
-  photo: profile.photoLabel
-};
-
-function SectionTitle({ title, sub }: { title: string; sub?: string }) {
+function SectionTitle({ title, sub }: { title: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="cy-section-title">
       {title}
@@ -358,160 +349,198 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
   );
 }
 
-function HomeTab({ introSkipped }: { introSkipped: boolean }) {
-  return (
-    <>
-      <div className="cy-content-box cy-miniroom-box">
-        <SectionTitle title="Mini Room" sub="미니룸" />
-        <div className="cy-miniroom-inner">
-          <MiniRoomCharacter introSkipped={introSkipped} />
-        </div>
-      </div>
+type TabViewProps = {
+  tab: TabDef;
+  content: SiteContent;
+  editing: boolean;
+  images: Record<string, string>;
+  update: (patch: Partial<SiteContent>) => void;
+};
 
-      <div className="cy-content-box">
-        <SectionTitle title="What friends say" sub="한마디로 표현한다면~" />
-        <GuestbookList />
-      </div>
-    </>
-  );
+/* 탭 하나의 블록 목록을 통째로 갈아 끼웁니다. */
+function setBlocks(props: TabViewProps, blocks: ContentBlock[]) {
+  props.update({ blocks: { ...props.content.blocks, [props.tab.id]: blocks } });
 }
 
-function ProfileTab() {
+function HomeTab({
+  introSkipped,
+  content,
+  editing,
+  update
+}: {
+  introSkipped: boolean;
+  content: SiteContent;
+  editing: boolean;
+  update: (patch: Partial<SiteContent>) => void;
+}) {
+  const setProfile = (patch: Partial<SiteContent["profile"]>) =>
+    update({ profile: { ...content.profile, ...patch } });
+
   return (
-    <>
-      {profileSections.map(section => (
-        <div key={section.id} className="cy-content-box">
-          <SectionTitle title={section.title} sub={section.subtitle} />
-          {section.blocks.map((block, bi) => {
-            if (block.kind === "text") {
-              return (
-                <div key={bi} className="cy-text-block">
-                  {block.lines.map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </div>
-              );
-            }
-            if (block.kind === "list") {
-              return (
-                <div key={bi} className="cy-profile-list-box">
-                  <div className="cy-profile-list-heading">{block.heading}</div>
-                  <ul className="cy-profile-list">
-                    {block.items.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            }
-            return (
-              <ul key={bi} className="cy-contact-list">
-                {block.items.map(item => (
-                  <li key={item.href}>
-                    <span className="cy-contact-label">{item.label}</span>
-                    <a
-                      href={item.href}
-                      target={item.href.startsWith("mailto:") ? undefined : "_blank"}
-                      rel="noopener noreferrer"
-                    >
-                      {item.value}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            );
-          })}
-        </div>
-      ))}
-    </>
-  );
-}
-
-function StoryTab() {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const open = episodes.find(e => e.id === openId);
-
-  if (open) {
-    return (
-      <div className="cy-content-box">
-        <SectionTitle
-          title={open.title ? `${open.label} ${open.title}` : open.label}
-          sub={`${open.cuts.length}컷`}
-        />
-        <button className="cy-back-btn" onClick={() => setOpenId(null)}>
-          목록으로
-        </button>
-        <div className="cy-cut-list">
-          {open.cuts.map((cut, i) => (
-            <img key={cut} src={asset(cut)} alt={`${open.label} ${i + 1}컷`} loading="lazy" />
-          ))}
-        </div>
+    <div className="cy-content-box cy-miniroom-box">
+      <SectionTitle
+        title={
+          <EditableText
+            value={content.profile.miniroomTitle}
+            editing={editing}
+            placeholder="Mini Room"
+            onSave={miniroomTitle => setProfile({ miniroomTitle })}
+          />
+        }
+        sub={
+          <EditableText
+            value={content.profile.miniroomSub}
+            editing={editing}
+            placeholder="미니룸"
+            onSave={miniroomSub => setProfile({ miniroomSub })}
+          />
+        }
+      />
+      <div className="cy-miniroom-inner">
+        <MiniRoomCharacter introSkipped={introSkipped} />
       </div>
-    );
-  }
-
-  return (
-    <div className="cy-content-box">
-      <SectionTitle title={profile.storyLabel} sub={`전체 ${episodes.length}화`} />
-      <ul className="cy-episode-grid">
-        {episodes.map(episode => (
-          <li key={episode.id}>
-            <button className="cy-episode-card" onClick={() => setOpenId(episode.id)}>
-              <span className="cy-episode-thumb">
-                <img src={asset(episode.thumb)} alt={episode.label} loading="lazy" />
-              </span>
-              <span className="cy-episode-label">{episode.label}</span>
-              {episode.title ? (
-                <span className="cy-episode-title">{episode.title}</span>
-              ) : null}
-            </button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
 
-function BoardTab() {
+function BlocksTab(props: TabViewProps & { layout?: "article" | "grid" }) {
+  const blocks = props.content.blocks[props.tab.id] ?? [];
   return (
     <div className="cy-content-box">
-      <SectionTitle title={profile.boardLabel} sub={profile.boardSubtitle} />
-      {boardPosts.length === 0 ? (
-        <div className="cy-empty-box">
-          {profile.boardEmptyText}
-        </div>
+      <SectionTitle title={props.tab.label} sub={props.editing ? "편집 중" : undefined} />
+      <BlockList
+        blocks={blocks}
+        editing={props.editing}
+        images={props.images}
+        layout={props.layout ?? "article"}
+        onChange={next => setBlocks(props, next)}
+      />
+    </div>
+  );
+}
+
+function BoardTab(props: TabViewProps) {
+  const { content, editing, tab, update } = props;
+  const posts = content.boardPosts;
+
+  const replace = (id: string, patch: Partial<BoardPost>) =>
+    update({ boardPosts: posts.map(p => (p.id === id ? { ...p, ...patch } : p)) });
+
+  const remove = (id: string) => {
+    if (!window.confirm("이 글을 지울까요?")) return;
+    update({ boardPosts: posts.filter(p => p.id !== id) });
+  };
+
+  const move = (id: string, delta: number) => {
+    const index = posts.findIndex(p => p.id === id);
+    const next = index + delta;
+    if (index < 0 || next < 0 || next >= posts.length) return;
+    const copy = [...posts];
+    [copy[index], copy[next]] = [copy[next], copy[index]];
+    update({ boardPosts: copy });
+  };
+
+  const add = () =>
+    update({
+      boardPosts: [
+        {
+          id: newId("post"),
+          category: "앱",
+          title: "새 글 제목",
+          summary: "",
+          date: new Date().toISOString().slice(0, 10),
+          href: ""
+        },
+        ...posts
+      ]
+    });
+
+  return (
+    <div className="cy-content-box">
+      <SectionTitle title={tab.label} sub={content.profile.boardSubtitle} />
+
+      {posts.length === 0 && !editing ? (
+        <div className="cy-empty-box">{content.profile.boardEmptyText}</div>
       ) : (
         <ul className="cy-board-list">
-          {boardPosts.map(post => (
-            <li key={post.id} className="cy-board-item">
-              <a className="cy-board-link" href={post.href} target="_blank" rel="noopener noreferrer">
-                {post.preview ? (
-                  <span className="cy-board-preview">
-                    <img src={asset(post.preview.src)} alt={post.preview.alt} loading="lazy" />
+          {posts.map(post => (
+            <li key={post.id} className={`cy-board-item${editing ? " is-editing" : ""}`}>
+              {editing ? (
+                <div className="cy-board-edit">
+                  <div className="cy-block-tools">
+                    <button type="button" onClick={() => move(post.id, -1)} title="위로">↑</button>
+                    <button type="button" onClick={() => move(post.id, 1)} title="아래로">↓</button>
+                    <button type="button" onClick={() => remove(post.id)} title="지우기">✕</button>
+                  </div>
+                  <EditableText
+                    className="cy-board-title"
+                    value={post.title}
+                    editing
+                    placeholder="제목"
+                    onSave={title => replace(post.id, { title })}
+                  />
+                  <EditableText
+                    className="cy-board-summary"
+                    value={post.summary}
+                    editing
+                    placeholder="한 줄 설명 (없으면 비워 두세요)"
+                    onSave={summary => replace(post.id, { summary })}
+                  />
+                  <EditableText
+                    className="cy-block-href"
+                    value={post.href}
+                    editing
+                    placeholder="https://..."
+                    onSave={href => replace(post.id, { href })}
+                  />
+                  <div className="cy-board-meta-edit">
+                    <EditableText
+                      className="cy-board-category"
+                      value={post.category}
+                      editing
+                      placeholder="분류"
+                      onSave={category => replace(post.id, { category })}
+                    />
+                    <EditableText
+                      className="cy-board-date"
+                      value={post.date}
+                      editing
+                      placeholder="2026-01-01"
+                      onSave={date => replace(post.id, { date })}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <a className="cy-board-link" href={post.href} target="_blank" rel="noopener noreferrer">
+                  <span className="cy-board-text">
+                    <span className="cy-board-head">
+                      <span className="cy-board-category">{post.category}</span>
+                      <span className="cy-board-title">{post.title}</span>
+                    </span>
+                    {post.summary ? <span className="cy-board-summary">{post.summary}</span> : null}
+                    <span className="cy-board-date">{post.date}</span>
                   </span>
-                ) : null}
-                <span className="cy-board-text">
-                  <span className="cy-board-head">
-                    <span className="cy-board-category">{post.category}</span>
-                    <span className="cy-board-title">{post.title}</span>
-                  </span>
-                  {post.summary ? <span className="cy-board-summary">{post.summary}</span> : null}
-                  <span className="cy-board-date">{post.date}</span>
-                </span>
-              </a>
+                </a>
+              )}
             </li>
           ))}
         </ul>
       )}
+
+      {editing ? (
+        <div className="cy-block-add">
+          <button type="button" onClick={add}>+ 글 추가</button>
+        </div>
+      ) : null}
     </div>
   );
 }
-
 /* 방명록은 구글 로그인을 해야 남길 수 있습니다 (도배 방지용 잠금이고,
    이름은 로그인과 상관없이 직접 적은 값을 그대로 씁니다). */
 function GuestbookForm() {
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
+  const [secret, setSecret] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -543,10 +572,14 @@ function GuestbookForm() {
     setSending(true);
     setMessage(null);
     try {
-      await addGuestbookEntry(author, text);
+      await addGuestbookEntry(author, text, secret);
       setAuthor("");
       setText("");
-      setMessage({ kind: "ok", text: "방명록을 남겼어요. 고맙습니다!" });
+      setSecret(false);
+      setMessage({
+        kind: "ok",
+        text: secret ? "비밀 방명록을 남겼어요. 주인장만 볼 수 있어요." : "방명록을 남겼어요. 고맙습니다!"
+      });
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "남기지 못했어요. 잠시 뒤 다시 시도해 주세요." });
     } finally {
@@ -596,6 +629,10 @@ function GuestbookForm() {
       <button className="cy-gb-submit" type="submit" disabled={sending}>
         {sending ? "전송중" : "남기기"}
       </button>
+      <label className="cy-gb-secret">
+        <input type="checkbox" checked={secret} onChange={e => setSecret(e.target.checked)} />
+        비밀글 (주인장과 나만 볼 수 있어요)
+      </label>
       {message ? (
         <span className={`cy-gb-message${message.kind === "error" ? " is-error" : ""}`}>{message.text}</span>
       ) : null}
@@ -606,7 +643,7 @@ function GuestbookForm() {
 const GUESTBOOK_FETCH_LIMIT = 30;
 const GUESTBOOK_PAGE_SIZE = 5;
 
-function GuestbookList() {
+function GuestbookList({ isOwner }: { isOwner: boolean }) {
   /* Firestore 가 설정되어 있으면 실시간 목록을, 아니면 linktree.ts 의 예시를 보여줍니다. */
   const [remote, setRemote] = useState<RemoteEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -614,12 +651,22 @@ function GuestbookList() {
   const [myUid, setMyUid] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  useEffect(() => subscribeAuthState(user => setMyUid(user?.uid ?? null)), []);
+
+  /* 비밀글 때문에 로그인 상태·주인장 여부가 바뀌면 구독을 다시 겁니다. */
   useEffect(() => {
     if (!isGuestbookEnabled) return;
-    return subscribeGuestbook(GUESTBOOK_FETCH_LIMIT, setRemote, () => setFailed(true));
-  }, []);
-
-  useEffect(() => subscribeAuthState(user => setMyUid(user?.uid ?? null)), []);
+    return subscribeGuestbook(
+      GUESTBOOK_FETCH_LIMIT,
+      { uid: myUid, isOwner },
+      setRemote,
+      error => {
+        /* 색인이 없으면 여기 뜨는 주소를 눌러 한 번만 만들어 주면 됩니다. */
+        console.error("[방명록]", error.message);
+        setFailed(true);
+      }
+    );
+  }, [myUid, isOwner]);
 
   const removeEntry = async (id: string) => {
     if (deletingId) return;
@@ -659,9 +706,10 @@ function GuestbookList() {
               <span className="cg-author">
                 {c.author} <span className="cg-colon">:</span>{" "}
               </span>
+              {"secret" in c && c.secret ? <span className="cg-secret">🔒 비밀글</span> : null}
               <span className="cg-text">{c.text}</span>
               <span className="cg-date">({c.date})</span>
-              {live && myUid && "uid" in c && c.uid === myUid ? (
+              {live && myUid && "uid" in c && (c.uid === myUid || isOwner) ? (
                 <button
                   type="button"
                   className="cg-delete"
@@ -724,37 +772,30 @@ function VisitCounter() {
   );
 }
 
-function PhotoTab() {
-  return (
-    <div className="cy-content-box">
-      <SectionTitle title={profile.photoLabel} sub={`${profile.photoSubtitlePrefix} ${photos.length}컷`} />
-      <ul className="cy-photo-grid">
-        {photos.map(photo => (
-          <li key={photo.id} className="cy-photo-item">
-            <div className="cy-photo-frame">
-              <img src={asset(photo.src)} alt={photo.name} loading="lazy" />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export default function LinkTree() {
-  const [activeTab, setActiveTab] = useState<TabName>("home");
+  const { content, isOwner, claimable, signedIn, claimOwnership, update } = useSiteContent();
+  const images = useImages();
+
+  const [activeTabId, setActiveTabId] = useState("home");
   const [introSkipped, setIntroSkipped] = useState(false);
+  const [editing, setEditing] = useState(false);
   const bgmRef = useRef<BgmHandle>(null);
+
+  const tabs = content.tabs;
+  const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0];
+  /* 편집은 주인장만 켤 수 있습니다. 주인이 아니면 편집 상태를 강제로 끕니다. */
+  const canEdit = isOwner && editing;
+
+  const setProfile = (patch: Partial<SiteContent["profile"]>) =>
+    update({ profile: { ...content.profile, ...patch } });
 
   /* ?tab=프로필 처럼 탭 딥링크로 들어오면 진입 화면을 건너뜁니다.
      정적 배포에서도 동작하도록 브라우저에서 읽습니다. */
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
-    const found = TABS.find(t => t === tab);
-    if (found) {
-      setActiveTab(found);
-      setIntroSkipped(true);
-    }
+    if (!tab) return;
+    setActiveTabId(tab);
+    setIntroSkipped(true);
   }, []);
 
   /* 인트로가 떠 있는 동안에는 뒤쪽이 스크롤되지 않게 막습니다. */
@@ -763,6 +804,85 @@ export default function LinkTree() {
     document.body.classList.add("lt-intro-open");
     return () => document.body.classList.remove("lt-intro-open");
   }, [introSkipped]);
+
+  /* ---------------- 탭 추가 / 삭제 / 이름 변경 ---------------- */
+
+  const addTab = () => {
+    const tab: TabDef = { id: newId("tab"), label: "새 탭", kind: "custom" };
+    update({ tabs: [...tabs, tab] });
+    setActiveTabId(tab.id);
+  };
+
+  const renameTab = (id: string, label: string) =>
+    update({ tabs: tabs.map(t => (t.id === id ? { ...t, label } : t)) });
+
+  const removeTab = (id: string) => {
+    if (id === "home") {
+      window.alert("홈 탭은 지울 수 없어요.");
+      return;
+    }
+    if (!window.confirm("이 탭을 지울까요? 안에 쓴 내용도 함께 사라집니다.")) return;
+    const nextBlocks = { ...content.blocks };
+    delete nextBlocks[id];
+    update({ tabs: tabs.filter(t => t.id !== id), blocks: nextBlocks });
+    setActiveTabId("home");
+  };
+
+  const moveTab = (id: string, delta: number) => {
+    const index = tabs.findIndex(t => t.id === id);
+    const next = index + delta;
+    if (index < 0 || next < 0 || next >= tabs.length) return;
+    const copy = [...tabs];
+    [copy[index], copy[next]] = [copy[next], copy[index]];
+    update({ tabs: copy });
+  };
+
+  const renderTab = () => {
+    if (!activeTab) return null;
+    const shared = { tab: activeTab, content, editing: canEdit, images, update };
+
+    switch (activeTab.kind) {
+      case "home":
+        return (
+          <HomeTab
+            introSkipped={introSkipped}
+            content={content}
+            editing={canEdit}
+            update={update}
+          />
+        );
+      case "board":
+        return <BoardTab {...shared} />;
+      case "photo":
+        return <BlocksTab {...shared} layout="grid" />;
+      case "guestbook":
+        return (
+          <div className="cy-content-box">
+            <SectionTitle
+              title={
+                <EditableText
+                  value={content.profile.guestbookTitle}
+                  editing={canEdit}
+                  placeholder="방명록"
+                  onSave={guestbookTitle => setProfile({ guestbookTitle })}
+                />
+              }
+              sub={
+                <EditableText
+                  value={content.profile.guestbookSub}
+                  editing={canEdit}
+                  placeholder="한마디 남겨주세요~"
+                  onSave={guestbookSub => setProfile({ guestbookSub })}
+                />
+              }
+            />
+            <GuestbookList isOwner={isOwner} />
+          </div>
+        );
+      default:
+        return <BlocksTab {...shared} />;
+    }
+  };
 
   /* 본문을 항상 그려 두고 인트로를 그 위에 덮습니다. (.lt-intro 는 position: fixed 입니다)
      BGM 플레이어가 미리 준비되어 있어야 인트로 클릭 한 번으로 재생이 시작됩니다. */
@@ -776,6 +896,28 @@ export default function LinkTree() {
       }}
     >
       <div className="cy-background-pattern"></div>
+
+      {/* 주인장에게만 보이는 편집 막대 */}
+      {isOwner ? (
+        <div className="cy-owner-bar">
+          <span className="cy-owner-tag">주인장</span>
+          <button
+            type="button"
+            className={`cy-owner-btn${editing ? " is-on" : ""}`}
+            onClick={() => setEditing(v => !v)}
+          >
+            {editing ? "편집 끝내기" : "내용 편집하기"}
+          </button>
+          {editing ? <span className="cy-owner-hint">고칠 글자를 눌러 보세요. 바뀐 내용은 바로 저장됩니다.</span> : null}
+        </div>
+      ) : claimable ? (
+        <div className="cy-owner-bar">
+          <span className="cy-owner-hint">아직 이 미니홈피의 주인이 정해지지 않았어요.</span>
+          <button type="button" className="cy-owner-btn" onClick={() => claimOwnership()}>
+            내가 주인입니다
+          </button>
+        </div>
+      ) : null}
 
       <div className="cy-book-wrapper">
         <div className="cy-book-outer">
@@ -800,15 +942,35 @@ export default function LinkTree() {
                   <img src={asset(profile.photo.src)} alt={profile.photo.alt} />
                 </div>
 
-                <div className="cy-intro-text">
-                  {profile.introDescription}
-                </div>
+                <EditableText
+                  as="div"
+                  className="cy-intro-text"
+                  value={content.profile.introDescription}
+                  editing={canEdit}
+                  multiline
+                  placeholder="소개 문구를 적어 주세요"
+                  onSave={introDescription => setProfile({ introDescription })}
+                />
 
                 <BgmPlayer ref={bgmRef} />
 
                 <div className="cy-profile-name">
-                  <div className="name-bold">{profile.teacherName}</div>
-                  <div className="title-sub">{profile.catalogDescription}</div>
+                  <EditableText
+                    as="div"
+                    className="name-bold"
+                    value={content.profile.teacherName}
+                    editing={canEdit}
+                    placeholder="이름"
+                    onSave={teacherName => setProfile({ teacherName })}
+                  />
+                  <EditableText
+                    as="div"
+                    className="title-sub"
+                    value={content.profile.catalogDescription}
+                    editing={canEdit}
+                    placeholder="한 줄 설명"
+                    onSave={catalogDescription => setProfile({ catalogDescription })}
+                  />
                 </div>
 
                 <div className="cy-left-dropdown">
@@ -833,30 +995,53 @@ export default function LinkTree() {
             {/* 우측 패널 */}
             <div className="cy-right-panel">
               <div className="cy-right-header">
-                <span className="cy-title">{TAB_TITLES[activeTab]}</span>
-                <span className="cy-url">{profile.displayUrl}</span>
+                <span className="cy-title">{activeTab?.label}</span>
+                <EditableText
+                  className="cy-url"
+                  value={content.profile.displayUrl}
+                  editing={canEdit}
+                  placeholder="주소창 문구"
+                  onSave={displayUrl => setProfile({ displayUrl })}
+                />
               </div>
 
-              <div className="cy-right-content">
-                {activeTab === "home" && <HomeTab introSkipped={introSkipped} />}
-                {activeTab === "profile" && <ProfileTab />}
-                {activeTab === "story" && <StoryTab />}
-                {activeTab === "board" && <BoardTab />}
-                {activeTab === "photo" && <PhotoTab />}
-              </div>
+              <div className="cy-right-content">{renderTab()}</div>
             </div>
 
             {/* 탭 영역 */}
             <div className="cy-tabs">
-              {TABS.map(tab => (
-                <button
-                  key={tab}
-                  className={"cy-tab-btn " + (activeTab === tab ? "active" : "")}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  <span className="cy-tab-line">{NAV_LABELS[tab]}</span>
-                </button>
+              {tabs.map(tab => (
+                <div key={tab.id} className="cy-tab-slot">
+                  <button
+                    className={"cy-tab-btn " + (activeTabId === tab.id ? "active" : "")}
+                    onClick={() => setActiveTabId(tab.id)}
+                  >
+                    <span className="cy-tab-line">{tab.label}</span>
+                  </button>
+                  {canEdit ? (
+                    <div className="cy-tab-tools">
+                      <button
+                        type="button"
+                        title="탭 이름 바꾸기"
+                        onClick={() => {
+                          const label = window.prompt("탭 이름", tab.label);
+                          if (label && label.trim()) renameTab(tab.id, label.trim());
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button type="button" title="위로" onClick={() => moveTab(tab.id, -1)}>↑</button>
+                      <button type="button" title="아래로" onClick={() => moveTab(tab.id, 1)}>↓</button>
+                      {tab.id === "home" ? null : (
+                        <button type="button" title="탭 지우기" onClick={() => removeTab(tab.id)}>✕</button>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               ))}
+              {canEdit ? (
+                <button type="button" className="cy-tab-add" onClick={addTab}>+ 탭</button>
+              ) : null}
             </div>
 
           </div>
@@ -865,6 +1050,8 @@ export default function LinkTree() {
 
       {!introSkipped ? (
         <IntroOverlay
+          title={content.profile.introTitle}
+          description={content.profile.introDescription}
           onBrowse={() => {
             /* 클릭 안에서 재생을 걸어야 브라우저가 소리를 허용합니다. */
             bgmRef.current?.start();
