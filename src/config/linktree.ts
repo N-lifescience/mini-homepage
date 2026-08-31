@@ -140,7 +140,8 @@ export type WaveLink = {
 export const waveLinks: WaveLink[] = [
   { id: "dorms-activity", label: "도름스 커뮤니티 나의 활동", href: "https://dorms.school/u/7b38a24d-02e2-44cd-a6f5-0d85ef80b55d" },
   { id: "instagram", label: "인스타그램", href: "https://www.instagram.com/n_life_science" },
-  { id: "naver-blog", label: "블로그", href: "https://blog.naver.com/n_lifescience" }
+  { id: "naver-blog", label: "블로그", href: "https://blog.naver.com/n_lifescience" },
+  { id: "meyo-lab", label: "미요Lab (원본 템플릿)", href: "https://pcallpang.github.io/meyo-lab/" }
 ];
 
 /* 미니홈피 BGM 입니다. 유튜브 영상을 음원으로 씁니다.
