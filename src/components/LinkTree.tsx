@@ -21,8 +21,7 @@ import {
 import type { User } from "firebase/auth";
 import {
   guestbook,
-  profile,
-  waveLinks
+  profile
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
 import { characterModes } from "@/config/character";
@@ -34,7 +33,8 @@ import {
   type BoardPost,
   type ContentBlock,
   type SiteContent,
-  type TabDef
+  type TabDef,
+  type WaveLink
 } from "@/lib/site-content";
 import { BlockList, EditableText } from "@/components/Editable";
 
@@ -850,6 +850,30 @@ export default function LinkTree() {
     update({ tabs: copy });
   };
 
+  /* ---------------- 파도타기 링크 ---------------- */
+
+  const waveLinks = content.waveLinks;
+
+  const replaceWave = (id: string, patch: Partial<WaveLink>) =>
+    update({ waveLinks: waveLinks.map(w => (w.id === id ? { ...w, ...patch } : w)) });
+
+  const removeWave = (id: string) => {
+    if (!window.confirm("이 링크를 지울까요?")) return;
+    update({ waveLinks: waveLinks.filter(w => w.id !== id) });
+  };
+
+  const moveWave = (id: string, delta: number) => {
+    const index = waveLinks.findIndex(w => w.id === id);
+    const next = index + delta;
+    if (index < 0 || next < 0 || next >= waveLinks.length) return;
+    const copy = [...waveLinks];
+    [copy[index], copy[next]] = [copy[next], copy[index]];
+    update({ waveLinks: copy });
+  };
+
+  const addWave = () =>
+    update({ waveLinks: [...waveLinks, { id: newId("wave"), label: "새 링크", href: "" }] });
+
   const renderTab = () => {
     if (!activeTab) return null;
     const shared = { tab: activeTab, content, editing: canEdit, images, update };
@@ -1033,20 +1057,49 @@ export default function LinkTree() {
                 </div>
 
                 <div className="cy-left-dropdown">
-                  <select
-                    value=""
-                    onChange={event => {
-                      const target = waveLinks.find(w => w.id === event.target.value);
-                      if (target) {
-                        window.open(target.href, "_blank", "noopener,noreferrer");
-                      }
-                    }}
-                  >
-                    <option value="" disabled>파도타기</option>
-                    {waveLinks.map(wave => (
-                      <option key={wave.id} value={wave.id}>{wave.label}</option>
-                    ))}
-                  </select>
+                  {canEdit ? (
+                    <div className="cy-wave-edit">
+                      {waveLinks.map(wave => (
+                        <div key={wave.id} className="cy-wave-edit-row">
+                          <EditableText
+                            className="cy-wave-label"
+                            value={wave.label}
+                            editing
+                            placeholder="이름"
+                            onSave={label => replaceWave(wave.id, { label })}
+                          />
+                          <EditableText
+                            className="cy-block-href"
+                            value={wave.href}
+                            editing
+                            placeholder="https://..."
+                            onSave={href => replaceWave(wave.id, { href })}
+                          />
+                          <div className="cy-block-tools cy-wave-tools">
+                            <button type="button" onClick={() => moveWave(wave.id, -1)} title="위로">↑</button>
+                            <button type="button" onClick={() => moveWave(wave.id, 1)} title="아래로">↓</button>
+                            <button type="button" onClick={() => removeWave(wave.id)} title="지우기">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" className="cy-wave-add" onClick={addWave}>+ 링크 추가</button>
+                    </div>
+                  ) : (
+                    <select
+                      value=""
+                      onChange={event => {
+                        const target = waveLinks.find(w => w.id === event.target.value);
+                        if (target) {
+                          window.open(target.href, "_blank", "noopener,noreferrer");
+                        }
+                      }}
+                    >
+                      <option value="" disabled>파도타기</option>
+                      {waveLinks.map(wave => (
+                        <option key={wave.id} value={wave.id}>{wave.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             </div>

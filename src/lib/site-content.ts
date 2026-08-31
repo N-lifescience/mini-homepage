@@ -22,7 +22,8 @@ import {
   boardPosts as staticBoardPosts,
   photos as staticPhotos,
   profile as staticProfile,
-  profileSections as staticProfileSections
+  profileSections as staticProfileSections,
+  waveLinks as staticWaveLinks
 } from "@/config/linktree";
 
 export const isEditableSiteEnabled = isGuestbookEnabled;
@@ -54,6 +55,12 @@ export type BoardPost = {
   href: string;
 };
 
+export type WaveLink = {
+  id: string;
+  label: string;
+  href: string;
+};
+
 export type SiteProfile = {
   teacherName: string;
   introTitle: string;
@@ -76,6 +83,7 @@ export type SiteContent = {
   /* 탭 id 별 내용입니다. 프로필/사진첩/직접 만든 탭이 여기를 씁니다. */
   blocks: Record<string, ContentBlock[]>;
   boardPosts: BoardPost[];
+  waveLinks: WaveLink[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -150,7 +158,8 @@ export function defaultContent(): SiteContent {
       summary: p.summary ?? "",
       date: p.date,
       href: p.href
-    }))
+    })),
+    waveLinks: staticWaveLinks.map(w => ({ id: w.id, label: w.label, href: w.href }))
   };
 }
 
@@ -163,7 +172,8 @@ function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
     profile: { ...base.profile, ...(raw.profile ?? {}) },
     tabs: Array.isArray(raw.tabs) && raw.tabs.length > 0 ? raw.tabs : base.tabs,
     blocks: raw.blocks && typeof raw.blocks === "object" ? raw.blocks : base.blocks,
-    boardPosts: Array.isArray(raw.boardPosts) ? raw.boardPosts : base.boardPosts
+    boardPosts: Array.isArray(raw.boardPosts) ? raw.boardPosts : base.boardPosts,
+    waveLinks: Array.isArray(raw.waveLinks) ? raw.waveLinks : base.waveLinks
   };
 }
 

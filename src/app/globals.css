@@ -1628,3 +1628,32 @@ body.lt-intro-open {
   }
   .cy-tab-add { width: auto; border-radius: 6px; border-left: 1px dashed #8B5CF6; }
 }
+
+/* 파도타기 편집 */
+.cy-wave-edit { display: flex; flex-direction: column; gap: 6px; }
+.cy-wave-edit-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 46px 6px 6px;
+  border: 1px dashed rgba(139, 92, 246, 0.5);
+  border-radius: 5px;
+}
+.cy-wave-label { font-size: 0.78rem; font-weight: bold; }
+.cy-wave-tools {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.cy-wave-add {
+  font-family: inherit;
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  border-radius: 3px;
+  border: 1px solid #8B5CF6;
+  background: #fff;
+  color: #5B2C8C;
+  cursor: pointer;
+}
+.cy-wave-add:hover { background: #8B5CF6; color: #fff; }
