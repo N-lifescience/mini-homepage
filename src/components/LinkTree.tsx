@@ -910,11 +910,9 @@ export default function LinkTree() {
     >
       <div className="cy-background-pattern"></div>
 
-      {/* 주인장 막대.
-          - 주인장으로 로그인했으면 항상 보입니다.
-          - 그 밖에는 주소 끝에 ?admin=1 을 붙였을 때만 보입니다.
-            (방문자에게 로그인 버튼이 보이지 않게 하려고요) */}
-      {isOwner ? (
+      {/* 주인장 막대. 주소 끝에 ?admin=1 을 붙였을 때만 보입니다.
+          주인장으로 로그인한 상태여도 평소 주소로 들어오면 방문자와 똑같이 보입니다. */}
+      {!adminMode ? null : isOwner ? (
         <div className="cy-owner-bar">
           <span className="cy-owner-tag">주인장</span>
           <button
@@ -929,7 +927,7 @@ export default function LinkTree() {
             로그아웃
           </button>
         </div>
-      ) : adminMode ? (
+      ) : (
         <div className="cy-owner-bar">
           {!signedIn ? (
             <>
@@ -978,7 +976,7 @@ export default function LinkTree() {
             </>
           )}
         </div>
-      ) : null}
+      )}
 
       <div className="cy-book-wrapper">
         <div className="cy-book-outer">
