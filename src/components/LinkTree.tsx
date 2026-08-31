@@ -740,7 +740,14 @@ function GuestbookList({ isOwner }: { isOwner: boolean }) {
         </div>
       ) : null}
 
-      {live ? <GuestbookForm /> : null}
+      {/* 목록을 못 불러왔더라도 글쓰기 칸은 남겨 둡니다.
+          (색인이 아직 만들어지는 중이면 목록만 잠깐 비어 보입니다) */}
+      {isGuestbookEnabled ? <GuestbookForm /> : null}
+      {failed ? (
+        <div className="cy-gb-loading">
+          방명록 목록을 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.
+        </div>
+      ) : null}
     </>
   );
 }
@@ -779,6 +786,7 @@ export default function LinkTree() {
   const [activeTabId, setActiveTabId] = useState("home");
   const [introSkipped, setIntroSkipped] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
   const bgmRef = useRef<BgmHandle>(null);
 
   const tabs = content.tabs;
@@ -792,7 +800,12 @@ export default function LinkTree() {
   /* ?tab=프로필 처럼 탭 딥링크로 들어오면 진입 화면을 건너뜁니다.
      정적 배포에서도 동작하도록 브라우저에서 읽습니다. */
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("admin") === "1") {
+      setAdminMode(true);
+      setIntroSkipped(true);
+    }
+    const tab = params.get("tab");
     if (!tab) return;
     setActiveTabId(tab);
     setIntroSkipped(true);
@@ -897,7 +910,10 @@ export default function LinkTree() {
     >
       <div className="cy-background-pattern"></div>
 
-      {/* 주인장에게만 보이는 편집 막대 */}
+      {/* 주인장 막대.
+          - 주인장으로 로그인했으면 항상 보입니다.
+          - 그 밖에는 주소 끝에 ?admin=1 을 붙였을 때만 보입니다.
+            (방문자에게 로그인 버튼이 보이지 않게 하려고요) */}
       {isOwner ? (
         <div className="cy-owner-bar">
           <span className="cy-owner-tag">주인장</span>
@@ -909,13 +925,58 @@ export default function LinkTree() {
             {editing ? "편집 끝내기" : "내용 편집하기"}
           </button>
           {editing ? <span className="cy-owner-hint">고칠 글자를 눌러 보세요. 바뀐 내용은 바로 저장됩니다.</span> : null}
-        </div>
-      ) : claimable ? (
-        <div className="cy-owner-bar">
-          <span className="cy-owner-hint">아직 이 미니홈피의 주인이 정해지지 않았어요.</span>
-          <button type="button" className="cy-owner-btn" onClick={() => claimOwnership()}>
-            내가 주인입니다
+          <button type="button" className="cy-owner-btn" onClick={() => signOutOfGoogle()}>
+            로그아웃
           </button>
+        </div>
+      ) : adminMode ? (
+        <div className="cy-owner-bar">
+          {!signedIn ? (
+            <>
+              <span className="cy-owner-hint">주인장이라면 로그인해 주세요.</span>
+              <button
+                type="button"
+                className="cy-owner-btn"
+                onClick={async () => {
+                  try {
+                    await signInWithGoogle();
+                  } catch {
+                    window.alert("로그인하지 못했어요. 팝업 차단을 풀고 다시 시도해 주세요.");
+                  }
+                }}
+              >
+                Google로 로그인
+              </button>
+            </>
+          ) : claimable ? (
+            <>
+              <span className="cy-owner-hint">아직 이 미니홈피의 주인이 정해지지 않았어요.</span>
+              <button
+                type="button"
+                className="cy-owner-btn"
+                onClick={async () => {
+                  try {
+                    await claimOwnership();
+                  } catch (error) {
+                    window.alert(
+                      error instanceof Error
+                        ? `주인 등록에 실패했어요: ${error.message}`
+                        : "주인 등록에 실패했어요."
+                    );
+                  }
+                }}
+              >
+                내가 주인입니다
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="cy-owner-hint">이미 다른 계정이 주인으로 등록돼 있어요.</span>
+              <button type="button" className="cy-owner-btn" onClick={() => signOutOfGoogle()}>
+                로그아웃
+              </button>
+            </>
+          )}
         </div>
       ) : null}
 
