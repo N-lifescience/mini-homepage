@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Spiral, type SpiralProps } from "@paper-design/shaders-react";
 import { asset } from "@/lib/asset";
 import BgmPlayer, { type BgmHandle } from "@/components/BgmPlayer";
@@ -123,6 +123,8 @@ const FLOOR_MAX_Y = 88;
 const FLOOR_SLOPE = 1.07; // 꼭짓점에서 아래로 1% 내려갈 때 바닥이 좌우로 넓어지는 폭(%)
 const FLOOR_EDGE_MARGIN = 5;
 const BUBBLE_DURATION_MS = 2600;
+/* 캐릭터와 가구 사이 이 거리(%) 안에 들어오면 상호작용 문구를 띄웁니다. */
+const NEAR_DISTANCE = 14;
 
 function clampToFloor(x: number, y: number) {
   const clampedY = Math.min(FLOOR_MAX_Y, Math.max(FLOOR_MIN_Y, y));
@@ -148,7 +150,8 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
   const [hovering, setHovering] = useState(false);
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* 인트로를 막 지나서 미니홈피에 처음 들어온 순간에만 인사 멘트를 자동으로 띄웁니다. */
+  /* 인트로를 막 지나서 미니홈피에 처음 들어온 순간에만 인사 멘트를 자동으로 띄웁니다.
+     이 멘트는 타이머로 사라지지 않고, 캐릭터를 클릭해서 모드를 바꾸기 전까지 계속 떠 있습니다. */
   const wasIntroSkipped = useRef(introSkipped);
   useEffect(() => {
     if (introSkipped && !wasIntroSkipped.current) {
@@ -157,7 +160,6 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
         const timer = setTimeout(() => {
           setModeIndex(waveIndex);
           setBubble(characterModes[waveIndex].lines[0]);
-          bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_DURATION_MS);
         }, 400);
         wasIntroSkipped.current = introSkipped;
         return () => clearTimeout(timer);
@@ -248,6 +250,28 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
 
   const mode = characterModes[modeIndex];
 
+  /* 캐릭터와 가장 가까운 가구를 찾습니다. 일정 거리 안이면 그 가구의 상호작용
+     문구를 보여 줍니다. 클릭으로 뜬 모드 멘트(bubble)가 떠 있는 동안에는
+     그게 먼저입니다. */
+  const nearbyItem = useMemo(() => {
+    let closest: (typeof furnitureItems)[number] | null = null;
+    let closestDist = Infinity;
+    for (const item of furnitureItems) {
+      const placed = layout[item.id];
+      if (!placed) continue;
+      const dx = placed.x - pos.x;
+      const dy = placed.y - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < NEAR_DISTANCE && dist < closestDist) {
+        closest = item;
+        closestDist = dist;
+      }
+    }
+    return closest;
+  }, [pos, layout]);
+
+  const displayBubble = bubble ?? nearbyItem?.hint ?? null;
+
   function cycleMode() {
     const nextIndex = (modeIndex + 1) % characterModes.length;
     const nextMode = characterModes[nextIndex];
@@ -335,12 +359,12 @@ function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
         onClick={cycleMode}
         aria-label={`캐릭터 모드 바꾸기 (현재: ${mode.label})`}
       >
-        {bubble ? (
+        {displayBubble ? (
           <span
-            className="cy-character-bubble"
+            className={`cy-character-bubble${!bubble ? " is-hint" : ""}`}
             style={{ transform: `translateX(-50%) scaleX(${facing === "right" ? -1 : 1})` }}
           >
-            {bubble}
+            {displayBubble}
           </span>
         ) : null}
         <img src={asset(mode.src)} alt={`N 캐릭터 - ${mode.label}`} draggable={false} />
@@ -366,40 +390,66 @@ function HomeTab({
   introSkipped,
   content,
   editing,
-  update
+  update,
+  isOwner
 }: {
   introSkipped: boolean;
   content: SiteContent;
   editing: boolean;
   update: (patch: Partial<SiteContent>) => void;
+  isOwner: boolean;
 }) {
   const setProfile = (patch: Partial<SiteContent["profile"]>) =>
     update({ profile: { ...content.profile, ...patch } });
 
   return (
-    <div className="cy-content-box cy-miniroom-box">
-      <SectionTitle
-        title={
-          <EditableText
-            value={content.profile.miniroomTitle}
-            editing={editing}
-            placeholder="Mini Room"
-            onSave={miniroomTitle => setProfile({ miniroomTitle })}
-          />
-        }
-        sub={
-          <EditableText
-            value={content.profile.miniroomSub}
-            editing={editing}
-            placeholder="미니룸"
-            onSave={miniroomSub => setProfile({ miniroomSub })}
-          />
-        }
-      />
-      <div className="cy-miniroom-inner">
-        <MiniRoomCharacter introSkipped={introSkipped} />
+    <>
+      <div className="cy-content-box cy-miniroom-box">
+        <SectionTitle
+          title={
+            <EditableText
+              value={content.profile.miniroomTitle}
+              editing={editing}
+              placeholder="Mini Room"
+              onSave={miniroomTitle => setProfile({ miniroomTitle })}
+            />
+          }
+          sub={
+            <EditableText
+              value={content.profile.miniroomSub}
+              editing={editing}
+              placeholder="미니룸"
+              onSave={miniroomSub => setProfile({ miniroomSub })}
+            />
+          }
+        />
+        <div className="cy-miniroom-inner">
+          <MiniRoomCharacter introSkipped={introSkipped} />
+        </div>
       </div>
-    </div>
+
+      <div className="cy-content-box">
+        <SectionTitle
+          title={
+            <EditableText
+              value={content.profile.guestbookTitle}
+              editing={editing}
+              placeholder="What friends say"
+              onSave={guestbookTitle => setProfile({ guestbookTitle })}
+            />
+          }
+          sub={
+            <EditableText
+              value={content.profile.guestbookSub}
+              editing={editing}
+              placeholder="한마디로 표현한다면~"
+              onSave={guestbookSub => setProfile({ guestbookSub })}
+            />
+          }
+        />
+        <GuestbookList isOwner={isOwner} />
+      </div>
+    </>
   );
 }
 
@@ -886,6 +936,7 @@ export default function LinkTree() {
             content={content}
             editing={canEdit}
             update={update}
+            isOwner={isOwner}
           />
         );
       case "board":

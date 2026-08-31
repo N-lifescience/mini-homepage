@@ -684,6 +684,13 @@ body.lt-intro-open {
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
+.cy-character-bubble.is-hint {
+  background: #FFD60A;
+  color: #2D0B4E;
+}
+.cy-character-bubble.is-hint::after {
+  border-top-color: #FFD60A;
+}
 .cy-character-bubble::after {
   content: "";
   position: absolute;

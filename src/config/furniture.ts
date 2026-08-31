@@ -10,6 +10,8 @@ export type FurnitureItem = {
   heightPercent: number;
   /* 좌우로 뒤집어서 놓고 싶으면 true 로 둡니다. */
   flip?: boolean;
+  /* 캐릭터가 방향키로 가까이 다가가면 뜨는 상호작용 문구입니다. */
+  hint: string;
 };
 
 export const furnitureItems: FurnitureItem[] = [
@@ -19,7 +21,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "DNA 홀로그램이 있는 실험대",
     x: 49.9,
     y: 59.6,
-    heightPercent: 34
+    heightPercent: 34,
+    hint: "실험대에서 뭔가 만들고 있어요!"
   },
   {
     id: "desk-hologram",
@@ -27,7 +30,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "홀로그램 모니터가 있는 책상",
     x: 28.5,
     y: 71.1,
-    heightPercent: 26
+    heightPercent: 26,
+    hint: "오늘의 데이터를 분석하는 중..."
   },
   {
     id: "office-chair",
@@ -35,7 +39,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "사무용 의자",
     x: 50.6,
     y: 69.7,
-    heightPercent: 20
+    heightPercent: 20,
+    hint: "잠깐 앉아서 쉬어갈까요? 🪑"
   },
   {
     id: "whiteboard",
@@ -44,7 +49,8 @@ export const furnitureItems: FurnitureItem[] = [
     x: 78.1,
     y: 59.1,
     heightPercent: 24,
-    flip: true
+    flip: true,
+    hint: "CYBER-BIO 101 수업 준비 중"
   },
   {
     id: "blackboard",
@@ -52,7 +58,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "CYBER-BIO 101 칠판",
     x: 10.7,
     y: 83.7,
-    heightPercent: 22
+    heightPercent: 22,
+    hint: "오늘의 수업 내용을 적어볼까요? ✏️"
   },
   {
     id: "specimen-tube",
@@ -60,7 +67,8 @@ export const furnitureItems: FurnitureItem[] = [
     alt: "표본 튜브",
     x: 34.4,
     y: 91.7,
-    heightPercent: 22
+    heightPercent: 22,
+    hint: "신비한 표본이 자라고 있어요..."
   },
   {
     id: "server-lockers",
@@ -69,6 +77,7 @@ export const furnitureItems: FurnitureItem[] = [
     x: 89.9,
     y: 84.9,
     heightPercent: 26,
-    flip: true
+    flip: true,
+    hint: "서버 상태를 점검하는 중입니다."
   }
 ];
