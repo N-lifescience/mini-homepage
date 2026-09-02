@@ -104,6 +104,91 @@ service cloud.firestore {
       }
     }
 
+    /* 낙서장(오에카키). progh2/mini-homepage 규칙을 가져와 (MIT) 이 파일의
+       isOwner() 에 맞췄습니다.
+
+       - 목록 문서: uid, author, comment, hidden, createdAt. 그림은 안 들어갑니다.
+       - 그림 본체: oekaki/{id}/image/data (base64 PNG, 300000자 이하)
+       - 그리는 과정: oekaki/{id}/replay/data (400000자 이하)
+       - 댓글: oekaki/{id}/comments
+       - 주인장은 hidden 한 칸만 바꿔 가릴 수 있습니다. 가려지면 주인장 외에는
+         그림·과정도 못 읽습니다. */
+    match /oekaki/{drawingId} {
+      function canDelete() {
+        return request.auth != null
+          && (resource.data.uid == request.auth.uid || isOwner());
+      }
+      function parentHidden() {
+        return get(/databases/$(database)/documents/oekaki/$(drawingId)).data.hidden;
+      }
+
+      allow read: if resource.data.hidden == false || isOwner();
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'author', 'comment', 'hidden', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.author is string
+        && request.resource.data.author.size() >= 1
+        && request.resource.data.author.size() <= 50
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 60
+        && request.resource.data.hidden == false
+        && request.resource.data.createdAt == request.time;
+
+      /* 가리기: 주인장만, hidden 한 칸만. */
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden'])
+        && request.resource.data.hidden is bool;
+
+      /* 예전 형식 정리: 문서 안의 image 를 빼는 것만 허용. */
+      allow update: if isOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['image'])
+        && !('image' in request.resource.data);
+
+      allow delete: if canDelete();
+
+      match /image/{docId} {
+        allow read: if parentHidden() == false || isOwner();
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['uid', 'image'])
+          && (request.resource.data.uid == request.auth.uid || isOwner())
+          && request.resource.data.image is string
+          && request.resource.data.image.size() <= 300000
+          && request.resource.data.image[0:22] == 'data:image/png;base64,';
+        allow update: if false;
+        allow delete: if canDelete();
+      }
+
+      match /replay/{docId} {
+        allow read: if parentHidden() == false || isOwner();
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['uid', 'ops', 'count', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.ops is string
+          && request.resource.data.ops.size() <= 400000
+          && request.resource.data.count is int
+          && request.resource.data.createdAt == request.time;
+        allow update: if false;
+        allow delete: if canDelete();
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['uid', 'author', 'text', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.author is string
+          && request.resource.data.author.size() >= 1
+          && request.resource.data.author.size() <= 50
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 100
+          && request.resource.data.createdAt == request.time;
+        allow update: if false;
+        allow delete: if canDelete();
+      }
+    }
+
     /* 미니홈피 왼쪽 위 TODAY / TOTAL 방문 수입니다. 문서 하나만 씁니다.
 
        - 한 번에 total 을 1씩만 올릴 수 있습니다

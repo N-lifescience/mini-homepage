@@ -1732,3 +1732,312 @@ body.lt-intro-open {
   cursor: pointer;
 }
 .cy-wave-add:hover { border-color: #ff6600; color: #ff6600; }
+
+/* ------------------------------------- */
+/* 낙서장 (오에카키)                        */
+/* progh2/mini-homepage 의 스타일을 가져와 (MIT) 이 저장소 색으로 맞췄습니다. */
+/* ------------------------------------- */
+.cg-act {
+  margin-left: 5px;
+  padding: 0 3px;
+  border: none;
+  background: none;
+  color: #aaa;
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.cg-act:hover:not(:disabled) { color: #ff6600; text-decoration: underline; }
+.cg-act:disabled { opacity: 0.5; cursor: default; }
+
+.cy-gb-signin {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: #888;
+}
+.cy-gb-signin-text { color: #888; }
+
+.cy-oe-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+}
+.cy-oe-pad { margin: 8px 0 12px; }
+
+/* 캔버스는 360px 이지만 좁은 화면에서는 폭에 맞춰 줄어듭니다.
+   touch-action 을 꺼야 손가락으로 그릴 때 화면이 같이 스크롤되지 않습니다. */
+.cy-oe-canvas {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+.cy-oe-tools { max-width: 360px; margin-top: 6px; }
+
+.cy-oe-colors {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  margin-bottom: 6px;
+}
+.cy-oe-color {
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.cy-oe-color.is-on {
+  border-color: #ff6600;
+  box-shadow: 0 0 0 2px #ff6600;
+  position: relative;
+  z-index: 1;
+}
+
+.cy-oe-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.cy-oe-width {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+.cy-oe-width span { display: block; border-radius: 50%; background: #333; }
+.cy-oe-width.is-on { border-color: #ff6600; background: #fff5ec; }
+
+.cy-oe-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.cy-oe-icon:hover:not(:disabled) { border-color: #ccc; color: #ff6600; }
+.cy-oe-icon:disabled { opacity: 0.4; cursor: default; }
+.cy-oe-icon.is-on { border-color: #ff6600; background: #fff5ec; color: #ff6600; }
+
+.cy-oe-layers { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.cy-oe-layer {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+  overflow: hidden;
+}
+.cy-oe-layer-pick,
+.cy-oe-layer-eye,
+.cy-oe-layer-del {
+  padding: 0 4px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: #666;
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.cy-oe-layer-pick.is-on { background: #ff6600; color: #fff; font-weight: bold; }
+.cy-oe-layer-eye.is-off { color: #ccc; }
+.cy-oe-layer-del:hover { color: #c0392b; }
+
+.cy-oe-btn {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.cy-oe-btn:hover:not(:disabled) { border-color: #ccc; color: #ff6600; }
+.cy-oe-btn:disabled { opacity: 0.5; cursor: default; }
+.cy-oe-btn.is-on { border-color: #ff6600; background: #fff5ec; color: #ff6600; font-weight: bold; }
+
+.cy-oe-comment {
+  flex: 1;
+  min-width: 110px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 5px 7px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  color: #444;
+  background: #fff;
+}
+.cy-oe-comment:focus { outline: none; border-color: #ff6600; }
+
+.cy-oe-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.cy-oe-item { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid #eee; }
+.cy-oe-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 116px;
+  padding: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  align-self: flex-start;
+}
+.cy-oe-thumb img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #fff; }
+.cy-oe-thumb:hover { border-color: #ccc; }
+.cy-oe-thumb:focus-visible { outline: 2px solid #ff6600; outline-offset: 1px; }
+
+.cy-oe-badge {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.58rem;
+}
+
+.cy-oe-side { flex: 1; min-width: 0; }
+.cy-oe-side-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+.cy-oe-title {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #333;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+  word-break: break-word;
+}
+.cy-oe-title:hover { color: #ff6600; }
+.cy-oe-title.is-empty { color: #aaa; font-weight: normal; }
+.cy-oe-author { font-size: 0.72rem; font-weight: bold; color: #666; }
+.cy-oe-title-text { font-size: 0.85rem; font-weight: bold; color: #333; }
+.cy-oe-date { font-size: 0.63rem; color: #999; }
+
+.cy-oe-reply-preview { list-style: none; margin: 0 0 4px; padding: 4px 0 0; border-top: 1px dotted #eee; }
+.cy-oe-reply-preview li { font-size: 0.72rem; line-height: 1.5; word-break: break-word; }
+
+.cy-oe-more {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #999;
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.cy-oe-more:hover { color: #ff6600; text-decoration: underline; }
+
+.cy-oe-detail-head { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.cy-oe-big {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+}
+.cy-oe-big.is-hidden { display: none; }
+.cy-oe-detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 360px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+.cy-oe-hidden-note { margin: 0 0 6px; font-size: 0.7rem; color: #ff6600; }
+.cy-oe-replies { margin: 8px 0; }
+.cy-oe-reply { padding: 5px 0; border-bottom: 1px dotted #eee; font-size: 0.75rem; line-height: 1.5; }
+.cy-oe-reply-author { font-weight: bold; color: #333; margin-right: 5px; }
+.cy-oe-reply-text { color: #444; word-break: break-word; }
+
+.cy-oe-help-btn {
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid #bbb;
+  border-radius: 50%;
+  background: #fff;
+  color: #666;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.cy-oe-help-btn:hover,
+.cy-oe-help-btn[aria-expanded="true"] { background: #ff6600; border-color: #ff6600; color: #fff; }
+.cy-oe-help {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff5ec;
+}
+.cy-oe-help p { margin: 0 0 5px; font-size: 0.73rem; line-height: 1.6; color: #444; }
+.cy-oe-help p:last-child { margin-bottom: 0; }
+.cy-oe-help-tip { color: #666 !important; }
+
+.cy-oe-opacity { display: inline-flex; align-items: center; gap: 4px; font-size: 0.66rem; color: #777; }
+.cy-oe-opacity input { width: 62px; accent-color: #ff6600; }
+
+.cy-oe-player { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.cy-oe-player canvas { cursor: default; }
+
+/* 그림을 받아오는 동안 자리를 잡아 둡니다. 안 그러면 목록이 들썩입니다. */
+.cy-oe-loading {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f4f4f4;
+}
+
+@media (max-width: 900px) {
+  .cy-oe-canvas, .cy-oe-tools, .cy-oe-big, .cy-oe-detail-meta { max-width: 100%; }
+}
+@media (max-width: 480px) {
+  .cy-oe-colors { grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .cy-oe-width, .cy-oe-icon { width: 32px; height: 32px; }
+  .cy-oe-layers { margin-left: 0; }
+  .cy-oe-thumb { width: 92px; }
+  .cy-oe-opacity input { width: 78px; }
+}

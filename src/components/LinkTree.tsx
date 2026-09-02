@@ -43,6 +43,7 @@ import {
   type WaveLink
 } from "@/lib/site-content";
 import { BlockList, EditableText, ViewSwitch } from "@/components/Editable";
+import Oekaki from "@/components/Oekaki";
 
 /* 진입 화면 셰이더 배경 설정입니다. 색은 theme.ts 를 따릅니다. */
 const spiralProps = {
@@ -1078,30 +1079,8 @@ export default function LinkTree() {
         return <BoardTab {...shared} />;
       case "photo":
         return <BlocksTab {...shared} defaultView="album" />;
-      case "guestbook":
-        return (
-          <div className="cy-content-box">
-            <SectionTitle
-              title={
-                <EditableText
-                  value={content.profile.guestbookTitle}
-                  editing={canEdit}
-                  placeholder="방명록"
-                  onSave={guestbookTitle => setProfile({ guestbookTitle })}
-                />
-              }
-              sub={
-                <EditableText
-                  value={content.profile.guestbookSub}
-                  editing={canEdit}
-                  placeholder="한마디 남겨주세요~"
-                  onSave={guestbookSub => setProfile({ guestbookSub })}
-                />
-              }
-            />
-            <GuestbookList isOwner={isOwner} />
-          </div>
-        );
+      case "oekaki":
+        return <Oekaki />;
       default:
         return <BlocksTab {...shared} />;
     }

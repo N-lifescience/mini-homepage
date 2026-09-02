@@ -7,7 +7,9 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
+  getDoc,
   getFirestore,
   limit as fsLimit,
   onSnapshot,
@@ -15,6 +17,8 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
+  updateDoc,
   where,
   type Firestore,
   type Timestamp
@@ -367,4 +371,276 @@ export async function deleteReply(entryId: string, replyId: string) {
   if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
   if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 지울 수 있어요.");
   await deleteDoc(doc(store, "guestbook", entryId, "replies", replyId));
+}
+
+/* ---------------------------------------------------------------
+   주인장 판별. 주인장 uid 는 site/content 문서에 들어 있고(site-content.ts),
+   그 구독이 값을 받을 때마다 여기 알려 줍니다. 낙서장처럼 site-content 를
+   직접 안 보는 화면도 같은 기준으로 주인장을 판단합니다.
+   --------------------------------------------------------------- */
+
+let knownOwnerUid: string | null = null;
+
+export function setKnownOwnerUid(uid: string | null) {
+  knownOwnerUid = uid;
+}
+
+export type SignedInUser = { uid: string; name: string };
+
+function toSignedInUser(user: User | null): SignedInUser | null {
+  if (!user) return null;
+  /* 구글 계정에 표시 이름이 없는 드문 경우가 있어 대비합니다. */
+  return { uid: user.uid, name: (user.displayName ?? "이름 없음").slice(0, GUESTBOOK_LIMITS.author) };
+}
+
+export function subscribeUser(onChange: (user: SignedInUser | null) => void) {
+  return subscribeAuthState(user => onChange(toSignedInUser(user)));
+}
+
+export function isOwner(user: SignedInUser | null | undefined) {
+  return Boolean(user && knownOwnerUid && user.uid === knownOwnerUid);
+}
+
+export function canDeleteEntry(viewer: SignedInUser | null | undefined, entryUid: string) {
+  return Boolean(viewer && ((entryUid && viewer.uid === entryUid) || isOwner(viewer)));
+}
+
+/* ---------------------------------------------------------------
+   낙서장(오에카키). progh2/mini-homepage 에서 가져와 (MIT) 이 파일의
+   동기식 getDb/getAuthInstance 에 맞춰 옮겼습니다.
+
+   그림은 문서 하나에 base64 PNG 로 들어갑니다. 360x360 선 그림이 대개
+   10~30KB 라 문서 한도(1MiB)에 한참 못 미칩니다. 대신 규칙에서 문자열
+   길이를 반드시 막아야 합니다. 안 그러면 1MiB 짜리를 계속 밀어 넣을 수 있습니다.
+   --------------------------------------------------------------- */
+
+export const OEKAKI = "oekaki";
+
+/* image 는 data URL 문자열 길이 상한입니다. 300000자면 실제 이미지로는
+   약 220KB 이고, 웬만큼 복잡한 그림도 여유 있게 들어갑니다. */
+export const OEKAKI_LIMITS = { comment: 60, image: 300000, reply: 100, replay: 400000 } as const;
+
+export type OekakiEntry = {
+  id: string;
+  uid: string;
+  author: string;
+  comment: string;
+  /* 그림 본체는 oekaki/{id}/image/data 하위 문서에 있어서 목록에서는 비어 있습니다.
+     (예전 형식으로 문서 안에 들어 있던 그림은 그대로 씁니다.) */
+  image?: string;
+  /* 주인장이 가린 그림인지. 가려지면 주인장 외에는 규칙이 읽기를 막습니다. */
+  hidden: boolean;
+  date: string;
+  time: string;
+  at: number;
+};
+
+export type OekakiReply = {
+  id: string;
+  uid: string;
+  author: string;
+  text: string;
+  date: string;
+  time: string;
+  at: number;
+};
+
+function toDate(value: unknown) {
+  return value && typeof (value as Timestamp).toDate === "function"
+    ? (value as Timestamp).toDate()
+    : new Date();
+}
+
+function formatTime(value: unknown) {
+  const date = toDate(value);
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${hh}:${mi}`;
+}
+
+export function subscribeOekaki(
+  count: number,
+  viewer: SignedInUser | null,
+  onData: (items: OekakiEntry[]) => void,
+  onError: (error: Error) => void
+) {
+  const store = getDb();
+  if (!store) return () => {};
+
+  /* 주인장이 아니면 where("hidden","==",false) 를 붙여야 규칙이 통과시킵니다.
+     orderBy 를 함께 쓰면 복합 색인이 필요해서, 정렬은 아래에서 합니다. */
+  const q = isOwner(viewer)
+    ? query(collection(store, OEKAKI), orderBy("createdAt", "desc"), fsLimit(count))
+    : query(collection(store, OEKAKI), where("hidden", "==", false), fsLimit(count));
+
+  return onSnapshot(
+    q,
+    snapshot => {
+      const items = snapshot.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          uid: String(data.uid ?? ""),
+          author: String(data.author ?? ""),
+          comment: String(data.comment ?? ""),
+          image: String(data.image ?? ""),
+          hidden: Boolean(data.hidden),
+          date: formatDate(data.createdAt),
+          time: formatTime(data.createdAt),
+          at: toDate(data.createdAt).getTime()
+        };
+      });
+      items.sort((a, b) => b.at - a.at);
+      onData(items);
+    },
+    error => onError(error as Error)
+  );
+}
+
+export function subscribeOekakiReplies(
+  drawingId: string,
+  onData: (items: OekakiReply[]) => void,
+  onError: (error: Error) => void
+) {
+  const store = getDb();
+  if (!store) return () => {};
+
+  const q = query(
+    collection(store, OEKAKI, drawingId, "comments"),
+    orderBy("createdAt", "asc"),
+    fsLimit(100)
+  );
+  return onSnapshot(
+    q,
+    snapshot => {
+      onData(
+        snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            uid: String(data.uid ?? ""),
+            author: String(data.author ?? ""),
+            text: String(data.text ?? ""),
+            date: formatDate(data.createdAt),
+            time: formatTime(data.createdAt),
+            at: toDate(data.createdAt).getTime()
+          };
+        })
+      );
+    },
+    error => onError(error as Error)
+  );
+}
+
+export async function addOekakiReply(drawingId: string, text: string) {
+  const store = getDb();
+  if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
+  const me = toSignedInUser(currentUser());
+  if (!me) throw new Error("구글 로그인 후 남길 수 있어요.");
+
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("댓글을 적어 주세요.");
+  if (trimmed.length > OEKAKI_LIMITS.reply) {
+    throw new Error(`댓글은 ${OEKAKI_LIMITS.reply}자까지 쓸 수 있어요.`);
+  }
+
+  await addDoc(collection(store, OEKAKI, drawingId, "comments"), {
+    uid: me.uid,
+    author: me.name,
+    text: trimmed,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function deleteOekakiReply(drawingId: string, replyId: string) {
+  const store = getDb();
+  if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
+  await deleteDoc(doc(store, OEKAKI, drawingId, "comments", replyId));
+}
+
+/* 주인장이 그림을 가리거나 다시 보이게 합니다. 규칙은 주인장에게만,
+   그리고 hidden 한 칸만 바꾸도록 허용합니다. */
+export async function setOekakiHidden(id: string, hidden: boolean) {
+  const store = getDb();
+  if (!store) throw new Error("그림 기능이 설정되지 않았습니다.");
+  await updateDoc(doc(store, OEKAKI, id), { hidden });
+}
+
+/* 그리는 과정 기록입니다. 그림 문서가 아니라 하위 문서에 따로 둡니다.
+   같은 문서에 넣으면 목록을 볼 때마다 딸려옵니다. */
+export type OekakiReplay = { ops: string; count: number };
+
+export async function getOekakiReplay(drawingId: string): Promise<OekakiReplay | null> {
+  const store = getDb();
+  if (!store) return null;
+  const snap = await getDoc(doc(store, OEKAKI, drawingId, "replay", "data"));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return { ops: String(data.ops ?? ""), count: Number(data.count ?? 0) };
+}
+
+export async function addOekaki(image: string, comment: string, replay?: OekakiReplay) {
+  const store = getDb();
+  if (!store) throw new Error("그림 기능이 설정되지 않았습니다.");
+  const me = toSignedInUser(currentUser());
+  if (!me) throw new Error("구글 로그인 후 남길 수 있어요.");
+
+  if (!image.startsWith("data:image/png;base64,")) throw new Error("그림을 만들지 못했어요.");
+  if (image.length > OEKAKI_LIMITS.image) {
+    throw new Error("그림이 너무 복잡해요. 조금 지우고 다시 남겨 주세요.");
+  }
+
+  const trimmed = comment.trim().slice(0, OEKAKI_LIMITS.comment);
+
+  /* 이미지는 목록 문서에 넣지 않습니다. 목록이 무거워집니다. */
+  const created = await addDoc(collection(store, OEKAKI), {
+    uid: me.uid,
+    author: me.name,
+    comment: trimmed,
+    hidden: false,
+    createdAt: serverTimestamp()
+  });
+
+  await setDoc(doc(store, OEKAKI, created.id, "image", "data"), { uid: me.uid, image });
+
+  /* 재생은 덤입니다. 실패해도 그림 남기기를 실패로 만들지 않습니다. */
+  if (replay && replay.ops.length <= OEKAKI_LIMITS.replay && replay.count > 0) {
+    try {
+      await setDoc(doc(store, OEKAKI, created.id, "replay", "data"), {
+        uid: me.uid,
+        ops: replay.ops,
+        count: replay.count,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.warn("[낙서장] 그리는 과정을 저장하지 못했습니다.", error);
+    }
+  }
+}
+
+/* 삭제 권한은 방명록과 같습니다. 작성자 본인과 주인장. */
+export async function deleteOekaki(id: string) {
+  const store = getDb();
+  if (!store) throw new Error("그림 기능이 설정되지 않았습니다.");
+  await deleteDoc(doc(store, OEKAKI, id));
+}
+
+/* 그림 한 장을 가져옵니다. 목록에는 없으므로 보이는 것만 이걸로 채웁니다. */
+export async function getOekakiImage(drawingId: string): Promise<string | null> {
+  const store = getDb();
+  if (!store) return null;
+  const snap = await getDoc(doc(store, OEKAKI, drawingId, "image", "data"));
+  if (!snap.exists()) return null;
+  return String(snap.data().image ?? "") || null;
+}
+
+/* 문서 안에 이미지가 남아 있는 예전 형식 그림을 하위 문서로 옮깁니다. 주인장만. */
+export async function moveOekakiImage(drawingId: string, image: string) {
+  const store = getDb();
+  if (!store) throw new Error("그림 기능이 설정되지 않았습니다.");
+  const me = toSignedInUser(currentUser());
+  if (!isOwner(me)) throw new Error("주인장만 정리할 수 있어요.");
+
+  await setDoc(doc(store, OEKAKI, drawingId, "image", "data"), { uid: me!.uid, image });
+  await updateDoc(doc(store, OEKAKI, drawingId), { image: deleteField() });
 }

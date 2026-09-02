@@ -17,7 +17,13 @@ import {
   onSnapshot,
   setDoc
 } from "firebase/firestore";
-import { currentUser, getStore, isGuestbookEnabled, subscribeAuthState } from "./firebase";
+import {
+  currentUser,
+  getStore,
+  isGuestbookEnabled,
+  setKnownOwnerUid,
+  subscribeAuthState
+} from "./firebase";
 import {
   boardPosts as staticBoardPosts,
   photos as staticPhotos,
@@ -41,7 +47,9 @@ export type ContentBlock =
   | (BlockBase & { type: "link"; label: string; href: string })
   | (BlockBase & { type: "image"; imageId: string; caption: string });
 
-export type TabKind = "home" | "profile" | "board" | "photo" | "guestbook" | "custom";
+/* guestbook 은 이제 탭이 아니라 홈 미니룸 아래에만 있습니다. 예전에 저장된
+   탭 목록에 남아 있어도 normalize() 가 걷어냅니다. oekaki 가 낙서장입니다. */
+export type TabKind = "home" | "profile" | "board" | "photo" | "guestbook" | "oekaki" | "custom";
 
 /* 탭 내용을 어떻게 보여 줄지입니다.
    - list: 글 흐름대로 세로로
@@ -151,7 +159,7 @@ export function defaultContent(): SiteContent {
       { id: "profile", label: "프로필", kind: "profile" },
       { id: "board", label: staticProfile.boardLabel, kind: "board" },
       { id: "photo", label: staticProfile.photoLabel, kind: "photo" },
-      { id: "guestbook", label: "방명록", kind: "guestbook" }
+      { id: "oekaki", label: "낙서장", kind: "oekaki" }
     ],
     blocks: {
       profile: defaultProfileBlocks(),
@@ -178,10 +186,16 @@ export function defaultContent(): SiteContent {
 function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
   const base = defaultContent();
   if (!raw) return base;
+  /* 예전에 저장된 탭 목록에 방명록 탭이 남아 있으면 빼고, 낙서장 탭이 없으면 붙입니다. */
+  let tabs = Array.isArray(raw.tabs) && raw.tabs.length > 0 ? raw.tabs : base.tabs;
+  tabs = tabs.filter(t => t.kind !== "guestbook");
+  if (!tabs.some(t => t.kind === "oekaki")) {
+    tabs = [...tabs, { id: "oekaki", label: "낙서장", kind: "oekaki" }];
+  }
   return {
     ownerUid: typeof raw.ownerUid === "string" ? raw.ownerUid : null,
     profile: { ...base.profile, ...(raw.profile ?? {}) },
-    tabs: Array.isArray(raw.tabs) && raw.tabs.length > 0 ? raw.tabs : base.tabs,
+    tabs,
     blocks: raw.blocks && typeof raw.blocks === "object" ? raw.blocks : base.blocks,
     boardPosts: Array.isArray(raw.boardPosts) ? raw.boardPosts : base.boardPosts,
     waveLinks: Array.isArray(raw.waveLinks) ? raw.waveLinks : base.waveLinks
@@ -294,7 +308,10 @@ export function useSiteContent(): SiteContentState {
     return onSnapshot(
       doc(store, "site", "content"),
       snapshot => {
-        setContent(normalize(snapshot.data() as Partial<SiteContent> | undefined));
+        const next = normalize(snapshot.data() as Partial<SiteContent> | undefined);
+        /* 낙서장 등 이 문서를 직접 안 보는 화면도 같은 주인장 기준을 쓰게 알려 줍니다. */
+        setKnownOwnerUid(next.ownerUid);
+        setContent(next);
         setReady(true);
       },
       () => setReady(true)
