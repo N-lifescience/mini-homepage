@@ -297,3 +297,74 @@ export async function deleteGuestbookEntry(id: string) {
   if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 지울 수 있어요.");
   await deleteDoc(doc(store, "guestbook", id));
 }
+
+/* ---------------------------------------------------------------
+   방명록 댓글. guestbook/{글}/replies/{댓글} 에 들어갑니다.
+   글이 비밀글이면 댓글도 같은 사람들(작성자·주인장)에게만 보입니다.
+   --------------------------------------------------------------- */
+
+export type RemoteReply = {
+  id: string;
+  author: string;
+  text: string;
+  date: string;
+  uid: string;
+};
+
+export const REPLY_LIMITS = { author: 20, text: 100 } as const;
+
+export function subscribeReplies(
+  entryId: string,
+  onData: (replies: RemoteReply[]) => void,
+  onError: (error: Error) => void
+) {
+  const store = getDb();
+  if (!store) return () => {};
+
+  const q = query(collection(store, "guestbook", entryId, "replies"), orderBy("createdAt", "asc"));
+  return onSnapshot(
+    q,
+    snapshot => {
+      onData(
+        snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            author: String(data.author ?? ""),
+            text: String(data.text ?? ""),
+            date: formatDate(data.createdAt),
+            uid: String(data.uid ?? "")
+          };
+        })
+      );
+    },
+    error => onError(error as Error)
+  );
+}
+
+export async function addReply(entryId: string, author: string, text: string) {
+  const store = getDb();
+  if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
+  const user = getAuthInstance()?.currentUser;
+  if (!user) throw new Error("구글 로그인 후 댓글을 남길 수 있어요.");
+
+  const trimmedAuthor = author.trim();
+  const trimmedText = text.trim();
+  if (!trimmedAuthor || !trimmedText) throw new Error("이름과 댓글을 모두 적어 주세요.");
+  if (trimmedAuthor.length > REPLY_LIMITS.author) throw new Error(`이름은 ${REPLY_LIMITS.author}자까지 쓸 수 있어요.`);
+  if (trimmedText.length > REPLY_LIMITS.text) throw new Error(`댓글은 ${REPLY_LIMITS.text}자까지 쓸 수 있어요.`);
+
+  await addDoc(collection(store, "guestbook", entryId, "replies"), {
+    author: trimmedAuthor,
+    text: trimmedText,
+    uid: user.uid,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function deleteReply(entryId: string, replyId: string) {
+  const store = getDb();
+  if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
+  if (!getAuthInstance()?.currentUser) throw new Error("구글 로그인 후 지울 수 있어요.");
+  await deleteDoc(doc(store, "guestbook", entryId, "replies", replyId));
+}

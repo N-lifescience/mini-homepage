@@ -32,18 +32,29 @@ export const isEditableSiteEnabled = isGuestbookEnabled;
 /* 내용의 모양                                                          */
 /* ------------------------------------------------------------------ */
 
+/* year 는 "연도별 보기" 에서 묶는 기준입니다. 비워 두면 "기타" 로 모입니다. */
+type BlockBase = { id: string; year?: string };
+
 export type ContentBlock =
-  | { id: string; type: "heading"; text: string }
-  | { id: string; type: "text"; text: string }
-  | { id: string; type: "link"; label: string; href: string }
-  | { id: string; type: "image"; imageId: string; caption: string };
+  | (BlockBase & { type: "heading"; text: string })
+  | (BlockBase & { type: "text"; text: string })
+  | (BlockBase & { type: "link"; label: string; href: string })
+  | (BlockBase & { type: "image"; imageId: string; caption: string });
 
 export type TabKind = "home" | "profile" | "board" | "photo" | "guestbook" | "custom";
+
+/* 탭 내용을 어떻게 보여 줄지입니다.
+   - list: 글 흐름대로 세로로
+   - album: 사진첩처럼 격자로
+   - year: 연도별로 묶어서 */
+export type TabView = "list" | "album" | "year";
 
 export type TabDef = {
   id: string;
   label: string;
   kind: TabKind;
+  /* 주인장이 정한 기본 보기. 방문자는 화면에서 잠깐 바꿔 볼 수 있습니다. */
+  view?: TabView;
 };
 
 export type BoardPost = {

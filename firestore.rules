@@ -75,6 +75,33 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if request.auth != null
         && (request.auth.uid == resource.data.uid || isOwner());
+
+      /* 댓글. 원글을 볼 수 있는 사람이면 댓글도 봅니다.
+         쓰기는 로그인한 사람, 삭제는 본인 댓글이거나 주인장. */
+      match /replies/{replyId} {
+        function parent() {
+          return get(/databases/$(database)/documents/guestbook/$(entryId)).data;
+        }
+
+        allow read: if parent().get('secret', false) == false
+          || (request.auth != null && request.auth.uid == parent().uid)
+          || isOwner();
+
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['author', 'text', 'uid', 'createdAt'])
+          && request.resource.data.author is string
+          && request.resource.data.author.size() >= 1
+          && request.resource.data.author.size() <= 20
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 100
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.uid == request.auth.uid;
+
+        allow update: if false;
+        allow delete: if request.auth != null
+          && (request.auth.uid == resource.data.uid || isOwner());
+      }
     }
 
     /* 미니홈피 왼쪽 위 TODAY / TOTAL 방문 수입니다. 문서 하나만 씁니다.

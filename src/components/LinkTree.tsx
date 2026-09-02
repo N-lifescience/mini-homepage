@@ -15,7 +15,12 @@ import {
   signOutOfGoogle,
   subscribeAuthState,
   subscribeGuestbook,
+  subscribeReplies,
+  addReply,
+  deleteReply,
+  REPLY_LIMITS,
   type RemoteEntry,
+  type RemoteReply,
   type VisitCounts
 } from "@/lib/firebase";
 import type { User } from "firebase/auth";
@@ -34,9 +39,10 @@ import {
   type ContentBlock,
   type SiteContent,
   type TabDef,
+  type TabView,
   type WaveLink
 } from "@/lib/site-content";
-import { BlockList, EditableText } from "@/components/Editable";
+import { BlockList, EditableText, ViewSwitch } from "@/components/Editable";
 
 /* 진입 화면 셰이더 배경 설정입니다. 색은 theme.ts 를 따릅니다. */
 const spiralProps = {
@@ -453,16 +459,37 @@ function HomeTab({
   );
 }
 
-function BlocksTab(props: TabViewProps & { layout?: "article" | "grid" }) {
-  const blocks = props.content.blocks[props.tab.id] ?? [];
+/* 목록/앨범/연도별 보기를 고를 수 있는 탭입니다.
+   - 방문자가 고르면 이 화면에서만 잠깐 바뀝니다.
+   - 주인장이 편집 중에 고르면 그 탭의 기본 보기로 저장됩니다. */
+function BlocksTab(props: TabViewProps & { defaultView?: TabView }) {
+  const { tab, content, editing, images, update } = props;
+  const blocks = content.blocks[tab.id] ?? [];
+  const savedView: TabView = tab.view ?? props.defaultView ?? "list";
+  const [localView, setLocalView] = useState<TabView | null>(null);
+  const view = localView ?? savedView;
+
+  /* 탭이 바뀌면 방문자가 잠깐 골랐던 보기는 잊습니다. */
+  useEffect(() => setLocalView(null), [tab.id]);
+
+  const changeView = (next: TabView) => {
+    setLocalView(next);
+    if (editing) {
+      update({ tabs: content.tabs.map(t => (t.id === tab.id ? { ...t, view: next } : t)) });
+    }
+  };
+
   return (
     <div className="cy-content-box">
-      <SectionTitle title={props.tab.label} sub={props.editing ? "편집 중" : undefined} />
+      <SectionTitle
+        title={tab.label}
+        sub={<ViewSwitch view={view} onChange={changeView} editing={editing} />}
+      />
       <BlockList
         blocks={blocks}
-        editing={props.editing}
-        images={props.images}
-        layout={props.layout ?? "article"}
+        editing={editing}
+        images={images}
+        view={view}
         onChange={next => setBlocks(props, next)}
       />
     </div>
@@ -693,15 +720,120 @@ function GuestbookForm() {
 const GUESTBOOK_FETCH_LIMIT = 30;
 const GUESTBOOK_PAGE_SIZE = 5;
 
+/* 방명록 글 하나에 달린 댓글 목록 + 댓글 쓰기 칸입니다. */
+function ReplyThread({
+  entryId,
+  myUid,
+  isOwner,
+  defaultAuthor
+}: {
+  entryId: string;
+  myUid: string | null;
+  isOwner: boolean;
+  defaultAuthor: string;
+}) {
+  const [replies, setReplies] = useState<RemoteReply[]>([]);
+  const [open, setOpen] = useState(false);
+  const [author, setAuthor] = useState(defaultAuthor);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => subscribeReplies(entryId, setReplies, () => setReplies([])), [entryId]);
+  useEffect(() => setAuthor(defaultAuthor), [defaultAuthor]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await addReply(entryId, author, text);
+      setText("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "댓글을 남기지 못했어요.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const remove = async (replyId: string) => {
+    if (!window.confirm("이 댓글을 지울까요?")) return;
+    try {
+      await deleteReply(entryId, replyId);
+    } catch {
+      window.alert("지우지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+    }
+  };
+
+  return (
+    <div className="cy-reply-thread">
+      <button type="button" className="cy-reply-toggle" onClick={() => setOpen(v => !v)}>
+        {open ? "└ 댓글 닫기" : `└ 댓글 ${replies.length}`}
+      </button>
+
+      {open ? (
+        <div className="cy-reply-body">
+          {replies.map(r => (
+            <div key={r.id} className="cy-reply-item">
+              <span className="cy-reply-author">{r.author}</span>
+              <span className="cy-reply-text">{r.text}</span>
+              <span className="cg-date">({r.date})</span>
+              {myUid && (r.uid === myUid || isOwner) ? (
+                <button type="button" className="cg-delete" onClick={() => remove(r.id)}>삭제</button>
+              ) : null}
+            </div>
+          ))}
+
+          {myUid ? (
+            <form className="cy-reply-form" onSubmit={submit}>
+              <input
+                className="cy-gb-author"
+                value={author}
+                onChange={e => setAuthor(e.target.value)}
+                placeholder="이름"
+                maxLength={REPLY_LIMITS.author}
+                aria-label="댓글 이름"
+              />
+              <input
+                className="cy-gb-text"
+                value={text}
+                onChange={e => setText(e.target.value)}
+                placeholder="댓글을 남겨주세요"
+                maxLength={REPLY_LIMITS.text}
+                aria-label="댓글"
+              />
+              <button className="cy-gb-submit" type="submit" disabled={sending}>
+                {sending ? "전송중" : "달기"}
+              </button>
+              {error ? <span className="cy-gb-message is-error">{error}</span> : null}
+            </form>
+          ) : (
+            <div className="cy-gb-loading">댓글은 구글 로그인 후 남길 수 있어요.</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function GuestbookList({ isOwner }: { isOwner: boolean }) {
   /* Firestore 가 설정되어 있으면 실시간 목록을, 아니면 linktree.ts 의 예시를 보여줍니다. */
   const [remote, setRemote] = useState<RemoteEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [page, setPage] = useState(0);
   const [myUid, setMyUid] = useState<string | null>(null);
+  const [myName, setMyName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => subscribeAuthState(user => setMyUid(user?.uid ?? null)), []);
+  useEffect(
+    () =>
+      subscribeAuthState(user => {
+        setMyUid(user?.uid ?? null);
+        setMyName(user?.displayName ?? "");
+      }),
+    []
+  );
 
   /* 비밀글 때문에 로그인 상태·주인장 여부가 바뀌면 구독을 다시 겁니다. */
   useEffect(() => {
@@ -768,6 +900,9 @@ function GuestbookList({ isOwner }: { isOwner: boolean }) {
                 >
                   삭제
                 </button>
+              ) : null}
+              {live && "uid" in c ? (
+                <ReplyThread entryId={c.id} myUid={myUid} isOwner={isOwner} defaultAuthor={myName} />
               ) : null}
             </div>
           ))
@@ -942,7 +1077,7 @@ export default function LinkTree() {
       case "board":
         return <BoardTab {...shared} />;
       case "photo":
-        return <BlocksTab {...shared} layout="grid" />;
+        return <BlocksTab {...shared} defaultView="album" />;
       case "guestbook":
         return (
           <div className="cy-content-box">
@@ -984,74 +1119,6 @@ export default function LinkTree() {
       }}
     >
       <div className="cy-background-pattern"></div>
-
-      {/* 주인장 막대. 주소 끝에 ?admin=1 을 붙였을 때만 보입니다.
-          주인장으로 로그인한 상태여도 평소 주소로 들어오면 방문자와 똑같이 보입니다. */}
-      {!adminMode ? null : isOwner ? (
-        <div className="cy-owner-bar">
-          <span className="cy-owner-tag">주인장</span>
-          <button
-            type="button"
-            className={`cy-owner-btn${editing ? " is-on" : ""}`}
-            onClick={() => setEditing(v => !v)}
-          >
-            {editing ? "편집 끝내기" : "내용 편집하기"}
-          </button>
-          {editing ? <span className="cy-owner-hint">고칠 글자를 눌러 보세요. 바뀐 내용은 바로 저장됩니다.</span> : null}
-          <button type="button" className="cy-owner-btn" onClick={() => signOutOfGoogle()}>
-            로그아웃
-          </button>
-        </div>
-      ) : (
-        <div className="cy-owner-bar">
-          {!signedIn ? (
-            <>
-              <span className="cy-owner-hint">주인장이라면 로그인해 주세요.</span>
-              <button
-                type="button"
-                className="cy-owner-btn"
-                onClick={async () => {
-                  try {
-                    await signInWithGoogle();
-                  } catch {
-                    window.alert("로그인하지 못했어요. 팝업 차단을 풀고 다시 시도해 주세요.");
-                  }
-                }}
-              >
-                Google로 로그인
-              </button>
-            </>
-          ) : claimable ? (
-            <>
-              <span className="cy-owner-hint">아직 이 미니홈피의 주인이 정해지지 않았어요.</span>
-              <button
-                type="button"
-                className="cy-owner-btn"
-                onClick={async () => {
-                  try {
-                    await claimOwnership();
-                  } catch (error) {
-                    window.alert(
-                      error instanceof Error
-                        ? `주인 등록에 실패했어요: ${error.message}`
-                        : "주인 등록에 실패했어요."
-                    );
-                  }
-                }}
-              >
-                내가 주인입니다
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="cy-owner-hint">이미 다른 계정이 주인으로 등록돼 있어요.</span>
-              <button type="button" className="cy-owner-btn" onClick={() => signOutOfGoogle()}>
-                로그아웃
-              </button>
-            </>
-          )}
-        </div>
-      )}
 
       <div className="cy-book-wrapper">
         <div className="cy-book-outer">
@@ -1159,6 +1226,64 @@ export default function LinkTree() {
             <div className="cy-right-panel">
               <div className="cy-right-header">
                 <span className="cy-title">{activeTab?.label}</span>
+                {adminMode ? (
+                  <span className="cy-admin-links">
+                    {isOwner ? (
+                      <>
+                        <span className="cy-admin-me">주인장</span>
+                        <button
+                          type="button"
+                          className={`cy-admin-link${editing ? " is-on" : ""}`}
+                          onClick={() => setEditing(v => !v)}
+                        >
+                          {editing ? "편집 끝" : "편집"}
+                        </button>
+                        <button type="button" className="cy-admin-link" onClick={() => signOutOfGoogle()}>
+                          로그아웃
+                        </button>
+                      </>
+                    ) : !signedIn ? (
+                      <button
+                        type="button"
+                        className="cy-admin-link"
+                        onClick={async () => {
+                          try {
+                            await signInWithGoogle();
+                          } catch {
+                            window.alert("로그인하지 못했어요. 팝업 차단을 풀고 다시 시도해 주세요.");
+                          }
+                        }}
+                      >
+                        주인장 로그인
+                      </button>
+                    ) : claimable ? (
+                      <button
+                        type="button"
+                        className="cy-admin-link"
+                        onClick={async () => {
+                          try {
+                            await claimOwnership();
+                          } catch (error) {
+                            window.alert(
+                              error instanceof Error
+                                ? `주인 등록에 실패했어요: ${error.message}`
+                                : "주인 등록에 실패했어요."
+                            );
+                          }
+                        }}
+                      >
+                        내가 주인입니다
+                      </button>
+                    ) : (
+                      <>
+                        <span className="cy-admin-me">다른 계정이 주인이에요</span>
+                        <button type="button" className="cy-admin-link" onClick={() => signOutOfGoogle()}>
+                          로그아웃
+                        </button>
+                      </>
+                    )}
+                  </span>
+                ) : null}
                 <EditableText
                   className="cy-url"
                   value={content.profile.displayUrl}

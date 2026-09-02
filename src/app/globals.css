@@ -66,9 +66,12 @@ body.lt-intro-open {
   font-weight: 800;
   line-height: 1.05;
   color: var(--ink);
-  -webkit-text-stroke: 1px #2D0B4E;
+  /* 윈도우에서 테두리와 글자가 겹쳐 보이던 문제: stroke 를 fill 뒤에 그리게 하고,
+     방향별 그림자로 테두리를 흉내 내던 것을 없앴습니다. 글꼴은 layout.tsx 에서
+     Pretendard 를 내려받아 맥/윈도우가 같은 모양으로 렌더링됩니다. */
+  paint-order: stroke fill;
+  -webkit-text-stroke: 3px #2D0B4E;
   text-shadow:
-    -1px -1px 0 #2D0B4E, 1px -1px 0 #2D0B4E, -1px 1px 0 #2D0B4E, 1px 1px 0 #2D0B4E,
     0 0 16px rgba(255,255,255,0.95),
     0 0 36px rgba(255,255,255,0.7),
     0 0 60px rgba(177,78,255,0.55);
@@ -81,9 +84,9 @@ body.lt-intro-open {
   font-size: clamp(1.08rem, 2.2vw, 1.6rem);
   font-weight: 800;
   line-height: 1.48;
-  -webkit-text-stroke: 0.75px #2D0B4E;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 2px #2D0B4E;
   text-shadow:
-    -0.75px -0.75px 0 #2D0B4E, 0.75px -0.75px 0 #2D0B4E, -0.75px 0.75px 0 #2D0B4E, 0.75px 0.75px 0 #2D0B4E,
     0 0 10px rgba(255,255,255,0.95),
     0 0 24px rgba(255,255,255,0.65),
     0 0 42px rgba(177,78,255,0.5);
@@ -1406,66 +1409,80 @@ body.lt-intro-open {
 }
 
 /* ------------------------------------- */
-/* 주인장 편집 UI                          */
+/* 주인장 편집 UI — 싸이월드 관리 메뉴 느낌   */
 /* ------------------------------------- */
-.cy-owner-bar {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
-  display: flex;
+/* 원칙: 굵은 보라 점선 대신, 옛 싸이월드처럼 11px 돋움 글씨의 작은 텍스트 링크와
+   얇은 회색/주황 선만 씁니다. 편집 요소는 "글자 아래 주황 점선" 정도로만 표시합니다. */
+
+.cy-admin-links {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: rgba(13, 7, 20, 0.92);
-  border: 1px solid rgba(255, 214, 10, 0.45);
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
-  font-size: 0.72rem;
-  color: #F3EAFF;
+  gap: 6px;
+  margin-left: 10px;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  color: #999;
 }
-.cy-owner-tag {
-  background: #FFD60A;
-  color: #2D0B4E;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 999px;
+.cy-admin-me {
+  color: #ff6600;
+  font-weight: bold;
 }
-.cy-owner-hint { color: #C9B8E8; }
-.cy-owner-btn {
+.cy-admin-me::after { content: " |"; color: #ccc; font-weight: normal; }
+.cy-admin-link {
   font-family: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 214, 10, 0.5);
-  background: transparent;
-  color: #FFD60A;
+  font-size: 11px;
+  color: #666;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
 }
-.cy-owner-btn.is-on { background: #FFD60A; color: #2D0B4E; }
+.cy-admin-link + .cy-admin-link::before { content: "| "; color: #ccc; }
+.cy-admin-link:hover { color: #ff6600; text-decoration: underline; }
+.cy-admin-link.is-on { color: #ff6600; font-weight: bold; }
 
 /* 눌러서 고칠 수 있는 곳 표시 */
 .cy-editable {
   cursor: text;
-  border-bottom: 1px dashed rgba(139, 92, 246, 0.8);
-  background: rgba(139, 92, 246, 0.07);
-  border-radius: 2px;
+  border-bottom: 1px dotted #ff9955;
 }
-.cy-editable:hover { background: rgba(139, 92, 246, 0.16); }
-.cy-editable-empty { color: #9b8ab5; font-style: italic; }
+.cy-editable:hover { background: #fff5ec; }
+.cy-editable-empty { color: #bbb; font-style: normal; }
 .cy-edit-input {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
   width: 100%;
-  padding: 3px 5px;
-  border: 1px solid #8B5CF6;
-  border-radius: 3px;
+  padding: 2px 4px;
+  border: 1px solid #aaa;
   background: #fff;
   resize: vertical;
 }
+.cy-edit-input:focus { outline: none; border-color: #ff6600; }
+
+/* 보기 전환 (목록 | 앨범 | 연도별) */
+.cy-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  font-weight: normal;
+  color: #999;
+}
+.cy-view-sep { color: #ccc; margin: 0 3px; }
+.cy-view-btn {
+  font-family: inherit;
+  font-size: 11px;
+  color: #777;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.cy-view-btn:hover { color: #ff6600; }
+.cy-view-btn.is-on { color: #ff6600; font-weight: bold; }
+.cy-view-note { margin-left: 6px; color: #bbb; }
 
 /* 글·사진·링크 블록 */
 .cy-block-article { display: flex; flex-direction: column; gap: 8px; }
@@ -1473,24 +1490,33 @@ body.lt-intro-open {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  align-items: start;
 }
 .cy-block { position: relative; }
 .cy-block.is-editing {
-  border: 1px dashed rgba(139, 92, 246, 0.5);
-  border-radius: 5px;
-  padding: 8px 8px 8px 10px;
+  border: 1px solid #e5e5e5;
+  padding: 22px 8px 8px;
+  background: #fdfdfd;
 }
 .cy-block-text { font-size: 0.8rem; line-height: 1.65; color: #444; margin: 0; }
 .cy-block-link { font-size: 0.8rem; color: #5B2C8C; }
 .cy-block-link-edit { display: flex; flex-direction: column; gap: 4px; }
 .cy-block-href { font-size: 0.72rem; color: #777; }
+
+/* 사진: 목록 보기에서는 너무 커지지 않게, 앨범/연도별 보기에서는 격자 칸에 맞게 */
 .cy-block-figure { margin: 0; }
 .cy-block-figure img {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid #ddd;
+  padding: 3px;
+  background: #fff;
+}
+.cy-block-article .cy-block.is-image { max-width: 320px; }
+.cy-block-grid .cy-block-figure img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
 }
 .cy-block-figure figcaption {
   font-size: 0.7rem;
@@ -1502,65 +1528,94 @@ body.lt-intro-open {
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 3;
-  background: #f4f0fa;
-  border: 1px dashed #b9a6dd;
-  border-radius: 4px;
+  background: #f7f7f7;
+  border: 1px dashed #ccc;
   font-size: 0.72rem;
-  color: #8B5CF6;
+  color: #999;
 }
 .cy-image-pick {
   display: inline-block;
   margin-top: 5px;
-  font-size: 0.7rem;
-  padding: 3px 9px;
-  border-radius: 3px;
-  border: 1px solid #8B5CF6;
-  color: #5B2C8C;
-  background: #fff;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #bbb;
+  background: linear-gradient(#fff, #eee);
+  color: #444;
   cursor: pointer;
 }
+.cy-image-pick:hover { border-color: #ff6600; color: #ff6600; }
+
+/* 블록 도구: 작은 텍스트 링크 [↑] [↓] [삭제] + 연도 칸 */
 .cy-block-tools {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 3px;
+  right: 6px;
   display: flex;
-  gap: 3px;
+  align-items: center;
+  gap: 4px;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
   z-index: 3;
 }
 .cy-block-tools button {
   font-family: inherit;
-  font-size: 0.66rem;
+  font-size: 11px;
   line-height: 1;
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
-  border: 1px solid #cbb8e8;
-  background: #fff;
-  color: #5B2C8C;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #888;
   cursor: pointer;
 }
-.cy-block-tools button:hover { background: #8B5CF6; color: #fff; }
+.cy-block-tools button:hover { color: #ff6600; }
+.cy-block-tools button.is-danger:hover { color: #c0392b; }
+.cy-year-chip input {
+  width: 44px;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 1px 3px;
+  border: 1px solid #ccc;
+  color: #555;
+  text-align: center;
+}
+.cy-year-chip input:focus { outline: none; border-color: #ff6600; }
+
 .cy-block-add {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed #ddd;
-  font-size: 0.72rem;
-  color: #777;
+  border-top: 1px dotted #ddd;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  color: #999;
 }
+.cy-block-add-label { margin-right: 4px; }
 .cy-block-add button {
   font-family: inherit;
-  font-size: 0.72rem;
-  padding: 4px 10px;
-  border-radius: 3px;
-  border: 1px solid #8B5CF6;
-  background: #fff;
-  color: #5B2C8C;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #bbb;
+  background: linear-gradient(#fff, #eee);
+  color: #444;
   cursor: pointer;
 }
-.cy-block-add button:hover { background: #8B5CF6; color: #fff; }
+.cy-block-add button:hover { border-color: #ff6600; color: #ff6600; }
+
+/* 연도별 묶음 */
+.cy-year-group { margin-bottom: 14px; }
+.cy-year-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e5e5;
+}
+.cy-year-label { font-size: 0.85rem; font-weight: bold; color: #ff6600; }
+.cy-year-count { font-family: "Tahoma", sans-serif; font-size: 0.68rem; color: #999; }
 
 /* 게시판 글 편집 */
 .cy-board-item.is-editing { padding: 8px 0; }
@@ -1569,9 +1624,9 @@ body.lt-intro-open {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border: 1px dashed rgba(139, 92, 246, 0.5);
-  border-radius: 5px;
-  padding: 8px;
+  border: 1px solid #e5e5e5;
+  padding: 22px 8px 8px;
+  background: #fdfdfd;
 }
 .cy-board-meta-edit { display: flex; gap: 6px; }
 
@@ -1585,37 +1640,34 @@ body.lt-intro-open {
   gap: 2px;
 }
 .cy-tab-tools button {
-  font-family: inherit;
-  font-size: 0.62rem;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 10px;
   line-height: 1;
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 214, 10, 0.5);
-  background: rgba(13, 7, 20, 0.9);
-  color: #FFD60A;
+  width: 17px;
+  height: 17px;
+  border: 1px solid #bbb;
+  background: linear-gradient(#fff, #eee);
+  color: #555;
   cursor: pointer;
 }
+.cy-tab-tools button:hover { border-color: #ff6600; color: #ff6600; }
 .cy-tab-add {
   margin-top: 4px;
-  font-family: inherit;
-  font-size: 0.7rem;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
   padding: 5px 4px;
   width: 62px;
   border-radius: 0 6px 6px 0;
-  border: 1px dashed #8B5CF6;
+  border: 1px dashed #bbb;
   border-left: none;
   background: rgba(255, 255, 255, 0.9);
-  color: #5B2C8C;
+  color: #666;
   cursor: pointer;
 }
+.cy-tab-add:hover { color: #ff6600; border-color: #ff6600; }
 
-/* 비밀글 */
-.cg-secret {
-  font-size: 0.62rem;
-  color: #8B5CF6;
-  margin-right: 4px;
-}
+/* 방명록 비밀글 + 댓글 */
+.cg-secret { font-size: 0.62rem; color: #ff6600; margin-right: 4px; }
 .cy-gb-secret {
   flex-basis: 100%;
   display: flex;
@@ -1624,17 +1676,34 @@ body.lt-intro-open {
   font-size: 0.7rem;
   color: #666;
 }
-
-@media (max-width: 900px) {
-  .cy-block-grid { grid-template-columns: repeat(2, 1fr); }
-  .cy-tab-tools {
-    left: auto;
-    right: 2px;
-    top: -16px;
-    margin-left: 0;
-  }
-  .cy-tab-add { width: auto; border-radius: 6px; border-left: 1px dashed #8B5CF6; }
+.cy-reply-thread { margin: 3px 0 2px 12px; }
+.cy-reply-toggle {
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  color: #888;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
+.cy-reply-toggle:hover { color: #ff6600; }
+.cy-reply-body {
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: #fafafa;
+  border-left: 2px solid #eee;
+}
+.cy-reply-item { font-size: 0.74rem; line-height: 1.6; color: #444; }
+.cy-reply-author { font-weight: bold; color: #555; margin-right: 4px; }
+.cy-reply-author::after { content: " :"; color: #bbb; }
+.cy-reply-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.cy-reply-form .cy-gb-author { width: 70px; }
+.cy-reply-form .cy-gb-text { min-width: 100px; }
 
 /* 파도타기 편집 */
 .cy-wave-edit { display: flex; flex-direction: column; gap: 6px; }
@@ -1643,9 +1712,9 @@ body.lt-intro-open {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px 46px 6px 6px;
-  border: 1px dashed rgba(139, 92, 246, 0.5);
-  border-radius: 5px;
+  padding: 6px 60px 6px 6px;
+  border: 1px solid #e5e5e5;
+  background: #fdfdfd;
 }
 .cy-wave-label { font-size: 0.78rem; font-weight: bold; }
 .cy-wave-tools {
@@ -1654,13 +1723,12 @@ body.lt-intro-open {
   right: 4px;
 }
 .cy-wave-add {
-  font-family: inherit;
-  font-size: 0.72rem;
-  padding: 5px 8px;
-  border-radius: 3px;
-  border: 1px solid #8B5CF6;
-  background: #fff;
-  color: #5B2C8C;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid #bbb;
+  background: linear-gradient(#fff, #eee);
+  color: #444;
   cursor: pointer;
 }
-.cy-wave-add:hover { background: #8B5CF6; color: #fff; }
+.cy-wave-add:hover { border-color: #ff6600; color: #ff6600; }

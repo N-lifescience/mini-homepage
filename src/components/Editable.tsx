@@ -3,12 +3,13 @@
 /* 주인장이 화면에서 바로 고칠 수 있게 해 주는 부품들입니다.
    편집 모드가 꺼져 있으면 평범한 글자·그림으로만 보입니다. */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   newId,
   resolveImageSrc,
   uploadImage,
-  type ContentBlock
+  type ContentBlock,
+  type TabView
 } from "@/lib/site-content";
 
 /* 글자 한 줄을 눌러서 고칩니다. 여러 줄이면 multiline 을 켭니다. */
@@ -95,19 +96,55 @@ export function EditableText({
   );
 }
 
+/* 목록 / 앨범 / 연도별 보기를 고르는 작은 탭입니다. 싸이월드 사진첩의 보기 전환처럼요. */
+export function ViewSwitch({
+  view,
+  onChange,
+  editing
+}: {
+  view: TabView;
+  onChange: (next: TabView) => void;
+  editing: boolean;
+}) {
+  const items: { id: TabView; label: string }[] = [
+    { id: "list", label: "목록" },
+    { id: "album", label: "앨범" },
+    { id: "year", label: "연도별" }
+  ];
+  return (
+    <div className="cy-view-switch" title={editing ? "여기서 고른 보기가 기본으로 저장됩니다" : undefined}>
+      {items.map((item, i) => (
+        <span key={item.id}>
+          {i > 0 ? <span className="cy-view-sep">|</span> : null}
+          <button
+            type="button"
+            className={`cy-view-btn${view === item.id ? " is-on" : ""}`}
+            onClick={() => onChange(item.id)}
+          >
+            {item.label}
+          </button>
+        </span>
+      ))}
+      {editing ? <span className="cy-view-note">(기본 보기로 저장됨)</span> : null}
+    </div>
+  );
+}
+
+const UNSORTED_YEAR = "기타";
+
 /* 글·사진·링크 블록 목록입니다. 새 탭, 프로필 탭, 사진첩이 모두 이걸 씁니다. */
 export function BlockList({
   blocks,
   onChange,
   editing,
   images,
-  layout = "article"
+  view = "list"
 }: {
   blocks: ContentBlock[];
   onChange: (next: ContentBlock[]) => void;
   editing: boolean;
   images: Record<string, string>;
-  layout?: "article" | "grid";
+  view?: TabView;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -153,7 +190,22 @@ export function BlockList({
     }
   };
 
-  const body = blocks.map(block => {
+  /* 연도별 보기: 연도가 큰 순서로 묶고, 연도가 없는 건 맨 뒤 "기타" 로 보냅니다. */
+  const groups = useMemo(() => {
+    if (view !== "year") return null;
+    const map = new Map<string, ContentBlock[]>();
+    blocks.forEach(b => {
+      const key = (b.year ?? "").trim() || UNSORTED_YEAR;
+      map.set(key, [...(map.get(key) ?? []), b]);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      if (a === UNSORTED_YEAR) return 1;
+      if (b === UNSORTED_YEAR) return -1;
+      return b.localeCompare(a);
+    });
+  }, [blocks, view]);
+
+  const renderBlock = (block: ContentBlock) => {
     const inner = (() => {
       if (block.type === "heading") {
         return (
@@ -243,32 +295,64 @@ export function BlockList({
       );
     })();
 
-    if (!editing) return <div key={block.id} className="cy-block">{inner}</div>;
+    if (!editing) {
+      return (
+        <div key={block.id} className={`cy-block is-${block.type}`}>
+          {inner}
+        </div>
+      );
+    }
 
     return (
-      <div key={block.id} className="cy-block is-editing">
+      <div key={block.id} className={`cy-block is-${block.type} is-editing`}>
         <div className="cy-block-tools">
-          <button type="button" onClick={() => move(block.id, -1)} title="위로">↑</button>
-          <button type="button" onClick={() => move(block.id, 1)} title="아래로">↓</button>
-          <button type="button" onClick={() => remove(block.id)} title="지우기">✕</button>
+          <label className="cy-year-chip" title="연도별 보기에서 묶는 기준">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="연도"
+              maxLength={4}
+              defaultValue={block.year ?? ""}
+              onBlur={e => {
+                const year = e.target.value.trim();
+                if (year !== (block.year ?? "")) replace(block.id, { year } as Partial<ContentBlock>);
+              }}
+            />
+          </label>
+          <button type="button" onClick={() => move(block.id, -1)}>[↑]</button>
+          <button type="button" onClick={() => move(block.id, 1)}>[↓]</button>
+          <button type="button" className="is-danger" onClick={() => remove(block.id)}>[삭제]</button>
         </div>
         {inner}
       </div>
     );
-  });
+  };
+
+  const layoutClass = view === "list" ? "cy-block-article" : "cy-block-grid";
 
   return (
     <>
-      <div className={layout === "grid" ? "cy-block-grid" : "cy-block-article"}>
-        {body}
-        {blocks.length === 0 && !editing ? (
-          <div className="cy-empty-box">아직 내용이 없습니다.</div>
-        ) : null}
-      </div>
+      {groups ? (
+        groups.map(([year, list]) => (
+          <section key={year} className="cy-year-group">
+            <div className="cy-year-head">
+              <span className="cy-year-label">{year}</span>
+              <span className="cy-year-count">{list.length}</span>
+            </div>
+            <div className="cy-block-grid">{list.map(renderBlock)}</div>
+          </section>
+        ))
+      ) : (
+        <div className={layoutClass}>{blocks.map(renderBlock)}</div>
+      )}
+
+      {blocks.length === 0 && !editing ? (
+        <div className="cy-empty-box">아직 내용이 없습니다.</div>
+      ) : null}
 
       {editing ? (
         <div className="cy-block-add">
-          <span>추가:</span>
+          <span className="cy-block-add-label">추가</span>
           <button type="button" onClick={() => add("heading")}>소제목</button>
           <button type="button" onClick={() => add("text")}>글</button>
           <button type="button" onClick={() => add("image")}>사진</button>
