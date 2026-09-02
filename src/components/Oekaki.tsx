@@ -1353,7 +1353,7 @@ function OekakiDetail({
         </div>
       ) : (
         <div className="cy-gb-signin">
-          <button type="button" className="cy-gb-google" onClick={() => signInWithGoogle()}>
+          <button type="button" className="cy-gb-google" onClick={() => signInWithGoogle().catch(e => window.alert(e instanceof Error ? e.message : "로그인하지 못했어요."))}>
             구글 로그인
           </button>
           <span className="cy-gb-signin-text">하면 덧글을 남길 수 있어요.</span>
@@ -1523,7 +1523,7 @@ export default function Oekaki() {
             </div>
           ) : (
             <div className="cy-gb-signin">
-              <button type="button" className="cy-gb-google" onClick={() => signInWithGoogle()}>
+              <button type="button" className="cy-gb-google" onClick={() => signInWithGoogle().catch(e => window.alert(e instanceof Error ? e.message : "로그인하지 못했어요."))}>
                 구글 로그인
               </button>
               <span className="cy-gb-signin-text">하면 그림을 남길 수 있어요.</span>

@@ -26,8 +26,10 @@ import {
 import {
   GoogleAuthProvider,
   getAuth,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   type Auth,
   type User
@@ -77,7 +79,14 @@ function getDb() {
 
 function getAuthInstance() {
   if (!isGuestbookEnabled) return null;
-  if (!auth) auth = getAuth(getApp());
+  if (!auth) {
+    auth = getAuth(getApp());
+    /* 미리 데워 둡니다. 팝업 로그인은 처음 부를 때 내부 iframe 을 먼저 준비하느라
+       팝업 여는 시점이 탭보다 늦어지는데, iOS 사파리는 그 사이에 사용자 동작이
+       끝났다고 보고 팝업을 막습니다. 페이지가 뜰 때 한 번 준비해 두면 실제 탭 때는
+       바로 열립니다. 리다이렉트 방식으로 돌아온 로그인 결과도 여기서 마무리됩니다. */
+    void getRedirectResult(auth).catch(() => {});
+  }
   return auth;
 }
 
@@ -104,10 +113,34 @@ export function subscribeAuthState(onChange: (user: User | null) => void) {
   return onAuthStateChanged(instance, onChange);
 }
 
+/* 팝업으로 먼저 시도하고, 브라우저가 팝업을 막으면(아이패드/아이폰 사파리가 흔함)
+   같은 탭에서 구글로 갔다 돌아오는 리다이렉트 방식으로 넘어갑니다.
+   리다이렉트는 페이지를 떠나므로 이 함수는 돌아오지 않고 끝납니다. */
 export async function signInWithGoogle() {
   const instance = getAuthInstance();
   if (!instance) throw new Error("로그인 기능이 설정되지 않았습니다.");
-  await signInWithPopup(instance, new GoogleAuthProvider());
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(instance, provider);
+  } catch (error) {
+    const code = (error as { code?: string })?.code ?? "";
+    if (
+      code === "auth/popup-blocked" ||
+      code === "auth/cancelled-popup-request" ||
+      code === "auth/operation-not-supported-in-this-environment" ||
+      code === "auth/web-storage-unsupported"
+    ) {
+      await signInWithRedirect(instance, provider);
+      return;
+    }
+    if (code === "auth/popup-closed-by-user") {
+      throw new Error("로그인 창이 닫혔어요. 다시 눌러 주세요.");
+    }
+    if (code === "auth/unauthorized-domain") {
+      throw new Error("이 주소는 Firebase 승인 도메인에 없어요. 콘솔 → Authentication → 설정에서 추가해 주세요.");
+    }
+    throw new Error(`로그인하지 못했어요. (${code || "알 수 없는 오류"})`);
+  }
 }
 
 export async function signOutOfGoogle() {
