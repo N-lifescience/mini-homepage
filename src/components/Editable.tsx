@@ -100,17 +100,23 @@ export function EditableText({
 export function ViewSwitch({
   view,
   onChange,
-  editing
+  editing,
+  options
 }: {
   view: TabView;
   onChange: (next: TabView) => void;
   editing: boolean;
+  /* 이 탭에서 고를 수 있는 보기입니다. 사진 위주 탭은 목록 보기를 빼고
+     앨범/연도별만 씁니다. */
+  options?: TabView[];
 }) {
-  const items: { id: TabView; label: string }[] = [
-    { id: "list", label: "목록" },
-    { id: "album", label: "앨범" },
-    { id: "year", label: "연도별" }
-  ];
+  const labels: Record<TabView, string> = {
+    list: "목록보기",
+    album: "앨범보기",
+    year: "연도별보기"
+  };
+  const allowed = options ?? (["list", "album", "year"] as TabView[]);
+  const items = allowed.map(id => ({ id, label: labels[id] }));
   return (
     <div className="cy-view-switch" title={editing ? "여기서 고른 보기가 기본으로 저장됩니다" : undefined}>
       {items.map((item, i) => (

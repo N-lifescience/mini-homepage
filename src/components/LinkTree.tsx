@@ -463,12 +463,16 @@ function HomeTab({
 /* 목록/앨범/연도별 보기를 고를 수 있는 탭입니다.
    - 방문자가 고르면 이 화면에서만 잠깐 바뀝니다.
    - 주인장이 편집 중에 고르면 그 탭의 기본 보기로 저장됩니다. */
-function BlocksTab(props: TabViewProps & { defaultView?: TabView }) {
+function BlocksTab(props: TabViewProps & { defaultView?: TabView; views?: TabView[] }) {
   const { tab, content, editing, images, update } = props;
   const blocks = content.blocks[tab.id] ?? [];
-  const savedView: TabView = tab.view ?? props.defaultView ?? "list";
+  const allowed = props.views ?? (["list", "album", "year"] as TabView[]);
+  const savedView: TabView = tab.view ?? props.defaultView ?? allowed[0];
   const [localView, setLocalView] = useState<TabView | null>(null);
-  const view = localView ?? savedView;
+  /* 저장된 보기가 이 탭에서 못 고르는 것이면(예: 앨범 전용 탭에 목록이 남아 있으면)
+     첫 번째 것으로 대신합니다. */
+  const picked = localView ?? savedView;
+  const view = allowed.includes(picked) ? picked : allowed[0];
 
   /* 탭이 바뀌면 방문자가 잠깐 골랐던 보기는 잊습니다. */
   useEffect(() => setLocalView(null), [tab.id]);
@@ -484,7 +488,9 @@ function BlocksTab(props: TabViewProps & { defaultView?: TabView }) {
     <div className="cy-content-box">
       <SectionTitle
         title={tab.label}
-        sub={<ViewSwitch view={view} onChange={changeView} editing={editing} />}
+        sub={
+          <ViewSwitch view={view} onChange={changeView} editing={editing} options={allowed} />
+        }
       />
       <BlockList
         blocks={blocks}
@@ -1078,11 +1084,15 @@ export default function LinkTree() {
       case "board":
         return <BoardTab {...shared} />;
       case "photo":
-        return <BlocksTab {...shared} defaultView="album" />;
+        return <BlocksTab {...shared} defaultView="album" views={["album", "year"]} />;
       case "oekaki":
         return <Oekaki />;
+      case "profile":
+        /* 프로필은 글 위주라 목록보기가 기본이고 세 가지를 다 고를 수 있습니다. */
+        return <BlocksTab {...shared} defaultView="list" />;
       default:
-        return <BlocksTab {...shared} />;
+        /* 직접 만든 탭(학교활동·외부활동 등)은 사진 위주라 앨범/연도별만 씁니다. */
+        return <BlocksTab {...shared} defaultView="album" views={["album", "year"]} />;
     }
   };
 

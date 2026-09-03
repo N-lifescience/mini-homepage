@@ -451,7 +451,14 @@ export const OEKAKI = "oekaki";
 
 /* image 는 data URL 문자열 길이 상한입니다. 300000자면 실제 이미지로는
    약 220KB 이고, 웬만큼 복잡한 그림도 여유 있게 들어갑니다. */
-export const OEKAKI_LIMITS = { comment: 60, image: 300000, reply: 100, replay: 400000 } as const;
+export const OEKAKI_LIMITS = {
+  comment: 60,
+  image: 300000,
+  reply: 100,
+  replay: 400000,
+  /* 규칙에서 author 를 50자까지 받습니다. */
+  author: 20
+} as const;
 
 export type OekakiEntry = {
   id: string;
@@ -516,7 +523,9 @@ export function subscribeOekaki(
           uid: String(data.uid ?? ""),
           author: String(data.author ?? ""),
           comment: String(data.comment ?? ""),
-          image: String(data.image ?? ""),
+          /* 새 그림은 목록 문서에 이미지가 없습니다. 없을 때 빈 문자열을 넣으면
+             화면 쪽에서 "이미 받았다" 로 오해하니 아예 비워 둡니다. */
+          image: data.image ? String(data.image) : undefined,
           hidden: Boolean(data.hidden),
           date: formatDate(data.createdAt),
           time: formatTime(data.createdAt),
@@ -565,7 +574,9 @@ export function subscribeOekakiReplies(
   );
 }
 
-export async function addOekakiReply(drawingId: string, text: string) {
+/* author 를 따로 받습니다. 로그인은 도배 방지용 잠금이고, 보이는 이름은
+   방명록처럼 직접 정합니다. 비워 두면 구글 계정 이름을 씁니다. */
+export async function addOekakiReply(drawingId: string, text: string, author?: string) {
   const store = getDb();
   if (!store) throw new Error("댓글 기능이 설정되지 않았습니다.");
   const me = toSignedInUser(currentUser());
@@ -577,9 +588,12 @@ export async function addOekakiReply(drawingId: string, text: string) {
     throw new Error(`댓글은 ${OEKAKI_LIMITS.reply}자까지 쓸 수 있어요.`);
   }
 
+  const name = (author ?? "").trim().slice(0, OEKAKI_LIMITS.author) || me.name;
+  if (!name) throw new Error("이름을 적어 주세요.");
+
   await addDoc(collection(store, OEKAKI, drawingId, "comments"), {
     uid: me.uid,
-    author: me.name,
+    author: name,
     text: trimmed,
     createdAt: serverTimestamp()
   });
@@ -612,7 +626,12 @@ export async function getOekakiReplay(drawingId: string): Promise<OekakiReplay |
   return { ops: String(data.ops ?? ""), count: Number(data.count ?? 0) };
 }
 
-export async function addOekaki(image: string, comment: string, replay?: OekakiReplay) {
+export async function addOekaki(
+  image: string,
+  comment: string,
+  replay?: OekakiReplay,
+  author?: string
+) {
   const store = getDb();
   if (!store) throw new Error("그림 기능이 설정되지 않았습니다.");
   const me = toSignedInUser(currentUser());
@@ -624,11 +643,13 @@ export async function addOekaki(image: string, comment: string, replay?: OekakiR
   }
 
   const trimmed = comment.trim().slice(0, OEKAKI_LIMITS.comment);
+  const name = (author ?? "").trim().slice(0, OEKAKI_LIMITS.author) || me.name;
+  if (!name) throw new Error("이름을 적어 주세요.");
 
   /* 이미지는 목록 문서에 넣지 않습니다. 목록이 무거워집니다. */
   const created = await addDoc(collection(store, OEKAKI), {
     uid: me.uid,
-    author: me.name,
+    author: name,
     comment: trimmed,
     hidden: false,
     createdAt: serverTimestamp()

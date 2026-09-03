@@ -215,10 +215,12 @@ function UndoIcon({ flip = false }: { flip?: boolean }) {
    되돌리기는 연산 직전 레이어 픽셀을 저장해 두었다가 복원합니다.
    --------------------------------------------------------------- */
 function OekakiPad({
+  defaultAuthor,
   onDone,
   onCancel
 }: {
-  onDone: (dataUrl: string, comment: string, replay: OekakiReplay) => Promise<void>;
+  defaultAuthor: string;
+  onDone: (dataUrl: string, comment: string, replay: OekakiReplay, author: string) => Promise<void>;
   onCancel: () => void;
 }) {
   /* 브라우저가 입력 칸을 알아보려면 id 나 name 이 있어야 합니다. */
@@ -249,6 +251,8 @@ function OekakiPad({
   /* 사각형과 원을 속까지 칠할지입니다. 도형 도구를 고를 때만 보입니다. */
   const [filled, setFilled] = useState(false);
   const [comment, setComment] = useState("");
+  /* 보이는 이름입니다. 구글 계정 이름으로 시작하고, 방명록처럼 직접 고칠 수 있습니다. */
+  const [author, setAuthor] = useState(defaultAuthor);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -630,7 +634,7 @@ function OekakiPad({
       /* 숨긴 레이어에 그린 획은 결과에 없으므로 기록에서도 뺍니다. */
       const shown = new Set(layers.map((l, i) => (l.visible ? i : -1)).filter(i => i >= 0));
       const ops = opsRef.current.filter(o => shown.has(o.l));
-      await onDone(dataUrl, comment, { ops: JSON.stringify(ops), count: ops.length });
+      await onDone(dataUrl, comment, { ops: JSON.stringify(ops), count: ops.length }, author);
     } catch (e) {
       setError(e instanceof Error ? e.message : "남기지 못했어요.");
     } finally {
@@ -808,6 +812,16 @@ function OekakiPad({
         ) : null}
 
         <div className="cy-oe-row">
+          <input
+            id={`${fieldId}-author`}
+            name="oekaki-author"
+            className="cy-oe-author-input"
+            value={author}
+            onChange={e => setAuthor(e.target.value)}
+            placeholder="이름"
+            maxLength={OEKAKI_LIMITS.author}
+            aria-label="이름"
+          />
           <input
             id={`${fieldId}-title`}
             name="oekaki-title"
@@ -1111,7 +1125,8 @@ function useOekakiImage(item: OekakiEntry) {
     };
   }, [item.id, item.image]);
 
-  return item.image ?? fetched;
+  /* ?? 가 아니라 || 입니다. 빈 문자열도 "없음" 으로 봐야 받아온 그림이 쓰입니다. */
+  return item.image || fetched;
 }
 
 /* ---------------------------------------------------------------
@@ -1203,6 +1218,7 @@ function OekakiDetail({
   const src = useOekakiImage(item);
   const [replies, setReplies] = useState<OekakiReply[] | null>(null);
   const [text, setText] = useState("");
+  const [replyAuthor, setReplyAuthor] = useState(viewer?.name ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /* 재생 기록은 눌렀을 때만 받아옵니다. 목록에서는 건드리지 않습니다. */
@@ -1210,6 +1226,7 @@ function OekakiDetail({
   const [loadingOps, setLoadingOps] = useState(false);
 
   useEffect(() => subscribeOekakiReplies(item.id, setReplies, () => setReplies([])), [item.id]);
+  useEffect(() => setReplyAuthor(viewer?.name ?? ""), [viewer?.name]);
 
   const play = async () => {
     if (loadingOps) return;
@@ -1244,7 +1261,7 @@ function OekakiDetail({
 
   const send = () =>
     run(async () => {
-      await addOekakiReply(item.id, text);
+      await addOekakiReply(item.id, text, replyAuthor);
       setText("");
     });
 
@@ -1338,12 +1355,22 @@ function OekakiDetail({
       {viewer ? (
         <div className="cy-oe-row">
           <input
+            id={`${fieldId}-reply-author`}
+            name="oekaki-reply-author"
+            className="cy-oe-author-input"
+            value={replyAuthor}
+            onChange={e => setReplyAuthor(e.target.value)}
+            placeholder="이름"
+            maxLength={OEKAKI_LIMITS.author}
+            aria-label="덧글 이름"
+          />
+          <input
             id={`${fieldId}-reply`}
             name="oekaki-reply"
             className="cy-oe-comment"
             value={text}
             onChange={e => setText(e.target.value)}
-            placeholder={`${viewer.name} 님으로 덧글 남기기`}
+            placeholder="덧글을 남겨주세요"
             maxLength={OEKAKI_LIMITS.reply}
             aria-label="덧글"
           />
@@ -1396,8 +1423,8 @@ export default function Oekaki() {
     });
   }, [viewer, me]);
 
-  const save = async (dataUrl: string, comment: string, replay: OekakiReplay) => {
-    await addOekaki(dataUrl, comment, replay);
+  const save = async (dataUrl: string, comment: string, replay: OekakiReplay, author: string) => {
+    await addOekaki(dataUrl, comment, replay, author);
     setOpen(false);
     setPage(0);
     setNotice("그림을 남겼어요. 고맙습니다!");
@@ -1501,7 +1528,11 @@ export default function Oekaki() {
       ) : (
         <>
           {open ? (
-            <OekakiPad onDone={save} onCancel={() => setOpen(false)} />
+            <OekakiPad
+              defaultAuthor={viewer?.name ?? ""}
+              onDone={save}
+              onCancel={() => setOpen(false)}
+            />
           ) : me === undefined ? null : me ? (
             <div className="cy-oe-start">
               <button

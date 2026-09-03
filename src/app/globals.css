@@ -2041,3 +2041,17 @@ body.lt-intro-open {
   .cy-oe-thumb { width: 92px; }
   .cy-oe-opacity input { width: 78px; }
 }
+
+/* 낙서장 이름 칸. 제목/덧글 칸보다 좁게 둡니다. */
+.cy-oe-author-input {
+  width: 88px;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 5px 7px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  color: #444;
+  background: #fff;
+}
+.cy-oe-author-input:focus { outline: none; border-color: #ff6600; }
