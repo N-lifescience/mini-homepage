@@ -463,7 +463,9 @@ function HomeTab({
 /* 목록/앨범/연도별 보기를 고를 수 있는 탭입니다.
    - 방문자가 고르면 이 화면에서만 잠깐 바뀝니다.
    - 주인장이 편집 중에 고르면 그 탭의 기본 보기로 저장됩니다. */
-function BlocksTab(props: TabViewProps & { defaultView?: TabView; views?: TabView[] }) {
+function BlocksTab(
+  props: TabViewProps & { defaultView?: TabView; views?: TabView[]; hideSwitch?: boolean }
+) {
   const { tab, content, editing, images, update } = props;
   const blocks = content.blocks[tab.id] ?? [];
   const allowed = props.views ?? (["list", "album", "year"] as TabView[]);
@@ -489,7 +491,9 @@ function BlocksTab(props: TabViewProps & { defaultView?: TabView; views?: TabVie
       <SectionTitle
         title={tab.label}
         sub={
-          <ViewSwitch view={view} onChange={changeView} editing={editing} options={allowed} />
+          props.hideSwitch ? undefined : (
+            <ViewSwitch view={view} onChange={changeView} editing={editing} options={allowed} />
+          )
         }
       />
       <BlockList
@@ -1088,8 +1092,8 @@ export default function LinkTree() {
       case "oekaki":
         return <Oekaki />;
       case "profile":
-        /* 프로필은 글 위주라 목록보기가 기본이고 세 가지를 다 고를 수 있습니다. */
-        return <BlocksTab {...shared} defaultView="list" />;
+        /* 프로필은 글 위주라 보기 전환 없이 목록으로만 보여 줍니다. */
+        return <BlocksTab {...shared} defaultView="list" views={["list"]} hideSwitch />;
       default:
         /* 직접 만든 탭(학교활동·외부활동 등)은 사진 위주라 앨범/연도별만 씁니다. */
         return <BlocksTab {...shared} defaultView="album" views={["album", "year"]} />;
