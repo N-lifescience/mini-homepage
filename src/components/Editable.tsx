@@ -5,12 +5,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  blockImageIds,
+  imageIdsPatch,
   newId,
   resolveImageSrc,
   uploadImage,
   type ContentBlock,
   type TabView
 } from "@/lib/site-content";
+import PhotoViewer from "@/components/PhotoViewer";
 
 /* 글자 한 줄을 눌러서 고칩니다. 여러 줄이면 multiline 을 켭니다. */
 export function EditableText({
@@ -152,10 +155,18 @@ export function BlockList({
   images: Record<string, string>;
   view?: TabView;
 }) {
-  const [busy, setBusy] = useState(false);
+  /* 사진을 여러 장 한꺼번에 올릴 때 어느 블록에 몇 장째인지 보여 주려고 들고 있습니다. */
+  const [uploading, setUploading] = useState<{ blockId: string; done: number; total: number } | null>(null);
+  /* 크게 넘겨 보는 화면을 띄운 사진 블록입니다. */
+  const [viewerBlockId, setViewerBlockId] = useState<string | null>(null);
+
+  /* 사진 올리기는 시간이 걸려서, 올리는 동안 주인장이 다른 곳을 고쳤을 수 있습니다.
+     항상 가장 최근 목록 위에 고쳐 쓰도록 여기에 담아 둡니다. */
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
 
   const replace = (id: string, patch: Partial<ContentBlock>) =>
-    onChange(blocks.map(b => (b.id === id ? ({ ...b, ...patch } as ContentBlock) : b)));
+    onChange(blocksRef.current.map(b => (b.id === id ? ({ ...b, ...patch } as ContentBlock) : b)));
 
   const remove = (id: string) => {
     if (!window.confirm("이 내용을 지울까요?")) return;
@@ -180,20 +191,47 @@ export function BlockList({
           ? { ...base, type: "text", text: "" }
           : type === "link"
             ? { ...base, type: "link", label: "", href: "" }
-            : { ...base, type: "image", imageId: "", caption: "" };
+            : { ...base, type: "image", imageId: "", imageIds: [], caption: "" };
     onChange([...blocks, created]);
   };
 
-  const pickImage = async (blockId: string, file: File) => {
-    setBusy(true);
+  /* 고른 사진을 차례로 올려서 이 블록 뒤에 붙입니다. 여러 장을 한 번에 골라도 됩니다.
+     한 장이라도 올라갔으면 도중에 실패해도 올라간 만큼은 남깁니다. */
+  const pickImages = async (block: ContentBlock, files: File[]) => {
+    if (files.length === 0) return;
+    setUploading({ blockId: block.id, done: 0, total: files.length });
+    const added: string[] = [];
     try {
-      const imageId = await uploadImage(file);
-      replace(blockId, { imageId } as Partial<ContentBlock>);
+      for (const file of files) {
+        added.push(await uploadImage(file));
+        setUploading({ blockId: block.id, done: added.length, total: files.length });
+      }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "사진을 올리지 못했어요.");
     } finally {
-      setBusy(false);
+      if (added.length > 0) {
+        const latest = blocksRef.current.find(b => b.id === block.id) ?? block;
+        replace(block.id, imageIdsPatch([...blockImageIds(latest), ...added]) as Partial<ContentBlock>);
+      }
+      setUploading(null);
     }
+  };
+
+  /* 블록 안에서 사진 순서를 바꿉니다. 맨 앞으로 오면 그게 대표 사진이 됩니다. */
+  const movePhoto = (block: ContentBlock, index: number, delta: number) => {
+    const ids = blockImageIds(block);
+    const next = index + delta;
+    if (next < 0 || next >= ids.length) return;
+    const copy = [...ids];
+    [copy[index], copy[next]] = [copy[next], copy[index]];
+    replace(block.id, imageIdsPatch(copy) as Partial<ContentBlock>);
+  };
+
+  /* 사진 한 장만 블록에서 뺍니다. 블록 자체는 그대로 둡니다. */
+  const removePhoto = (block: ContentBlock, index: number) => {
+    const ids = blockImageIds(block);
+    if (!window.confirm("이 사진을 뺄까요?")) return;
+    replace(block.id, imageIdsPatch(ids.filter((_, i) => i !== index)) as Partial<ContentBlock>);
   };
 
   /* 연도별 보기: 연도가 큰 순서로 묶고, 연도가 없는 건 맨 뒤 "기타" 로 보냅니다. */
@@ -265,28 +303,79 @@ export function BlockList({
         );
       }
 
-      const src = resolveImageSrc(block.imageId, images);
+      /* 사진 블록입니다. 목록에는 대표 사진(첫 장) 한 장만 내보이고,
+         누르면 이 글에 들어 있는 사진을 전부 넘겨 볼 수 있습니다. */
+      const ids = blockImageIds(block);
+      const cover = ids.length > 0 ? resolveImageSrc(ids[0], images) : "";
       return (
         <figure className="cy-block-figure">
-          {src ? (
-            <img src={src} alt={block.caption} loading="lazy" />
+          {cover ? (
+            <button
+              type="button"
+              className="cy-photo-cover"
+              onClick={() => setViewerBlockId(block.id)}
+              title={ids.length > 1 ? `사진 ${ids.length}장 보기` : "크게 보기"}
+            >
+              <img src={cover} alt={block.caption} loading="lazy" />
+              {ids.length > 1 ? <span className="cy-photo-count">+{ids.length - 1}</span> : null}
+            </button>
           ) : (
             <div className="cy-block-image-empty">사진을 골라 주세요</div>
           )}
           {editing ? (
-            <label className="cy-image-pick">
-              {busy ? "올리는 중…" : src ? "사진 바꾸기" : "사진 고르기"}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (file) pickImage(block.id, file);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <>
+              {ids.length > 0 ? (
+                <div className="cy-photo-strip">
+                  {ids.map((id, i) => (
+                    <div key={`${id}-${i}`} className={`cy-photo-thumb${i === 0 ? " is-cover" : ""}`}>
+                      <img src={resolveImageSrc(id, images)} alt="" />
+                      {i === 0 ? <span className="cy-photo-tag">대표</span> : null}
+                      <div className="cy-photo-thumb-tools">
+                        {ids.length > 1 ? (
+                          <>
+                            <button type="button" onClick={() => movePhoto(block, i, -1)} title="앞으로">
+                              ‹
+                            </button>
+                            <button type="button" onClick={() => movePhoto(block, i, 1)} title="뒤로">
+                              ›
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="is-danger"
+                          onClick={() => removePhoto(block, i)}
+                          title="이 사진 빼기"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <label className="cy-image-pick">
+                {uploading && uploading.blockId === block.id
+                  ? `올리는 중 ${uploading.done}/${uploading.total}…`
+                  : ids.length > 0
+                    ? "사진 더 넣기"
+                    : "사진 고르기"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={e => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    if (files.length > 0) pickImages(block, files);
+                  }}
+                />
+              </label>
+              {ids.length > 1 ? (
+                <span className="cy-photo-hint">맨 앞 사진이 목록에 보이는 대표 사진입니다</span>
+              ) : null}
+            </>
           ) : null}
           {block.caption || editing ? (
             <EditableText
@@ -336,6 +425,13 @@ export function BlockList({
 
   const layoutClass = view === "list" ? "cy-block-article" : "cy-block-grid";
 
+  /* 크게 보기 화면에 넘겨 줄 사진들입니다. 아직 안 불러온 사진은 빼고 보여 줍니다. */
+  const found = blocks.find(b => b.id === viewerBlockId);
+  const viewerBlock = found && found.type === "image" ? found : null;
+  const viewerSrcs = viewerBlock
+    ? blockImageIds(viewerBlock).map(id => resolveImageSrc(id, images)).filter(Boolean)
+    : [];
+
   return (
     <>
       {groups ? (
@@ -364,6 +460,14 @@ export function BlockList({
           <button type="button" onClick={() => add("image")}>사진</button>
           <button type="button" onClick={() => add("link")}>링크</button>
         </div>
+      ) : null}
+
+      {viewerBlock && viewerSrcs.length > 0 ? (
+        <PhotoViewer
+          srcs={viewerSrcs}
+          caption={viewerBlock.caption}
+          onClose={() => setViewerBlockId(null)}
+        />
       ) : null}
     </>
   );

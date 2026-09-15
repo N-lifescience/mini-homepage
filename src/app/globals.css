@@ -1546,6 +1546,184 @@ body.lt-intro-open {
 }
 .cy-image-pick:hover { border-color: #ff6600; color: #ff6600; }
 
+/* 사진 여러 장이 들어 있는 글: 목록에는 대표 사진만, 누르면 전부 넘겨 보기 */
+.cy-photo-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.cy-photo-cover:hover img { border-color: #ff6600; }
+.cy-photo-count {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  padding: 3px 6px;
+  font-family: "Tahoma", sans-serif;
+  font-size: 10px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* 편집 중에 보이는 사진 목록. 맨 앞이 대표 사진입니다. */
+.cy-photo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.cy-photo-thumb { position: relative; width: 54px; }
+.cy-block-figure .cy-photo-thumb img,
+.cy-block-grid .cy-block-figure .cy-photo-thumb img {
+  width: 54px;
+  height: 54px;
+  aspect-ratio: auto;
+  object-fit: cover;
+  padding: 1px;
+  border: 1px solid #ddd;
+}
+.cy-photo-thumb.is-cover img { border-color: #ff6600; }
+.cy-photo-tag {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  padding: 2px 3px;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 9px;
+  line-height: 1;
+  color: #fff;
+  background: #ff6600;
+}
+.cy-photo-thumb-tools {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 1px;
+}
+.cy-photo-thumb-tools button {
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 11px;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0 1px;
+  color: #888;
+  cursor: pointer;
+}
+.cy-photo-thumb-tools button:hover { color: #ff6600; }
+.cy-photo-thumb-tools button.is-danger:hover { color: #c0392b; }
+.cy-photo-hint {
+  display: block;
+  margin-top: 4px;
+  font-family: "Dotum", "Gulim", sans-serif;
+  font-size: 10px;
+  color: #aaa;
+}
+
+/* 사진 크게 보기 */
+.cy-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 5, 18, 0.78);
+}
+.cy-viewer-box {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: 100%;
+  background: #fff;
+  border: 1px solid #b9a7d6;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.cy-viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #e5e5e5;
+  background: linear-gradient(#fbf8ff, #f1ebfa);
+}
+.cy-viewer-caption {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #444;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cy-viewer-count { font-family: "Tahoma", sans-serif; font-size: 0.68rem; color: #999; }
+.cy-viewer-close {
+  padding: 0 2px;
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+}
+.cy-viewer-close:hover { color: #ff6600; }
+.cy-viewer-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 10px;
+  background: #faf8fd;
+}
+.cy-viewer-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: min(66vh, 560px);
+  object-fit: contain;
+}
+.cy-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 46px;
+  font-size: 22px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  cursor: pointer;
+}
+.cy-viewer-nav:hover { background: rgba(255, 102, 0, 0.85); }
+.cy-viewer-nav.is-prev { left: 10px; }
+.cy-viewer-nav.is-next { right: 10px; }
+.cy-viewer-strip {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 7px 10px;
+  border-top: 1px solid #e5e5e5;
+}
+.cy-viewer-thumb {
+  flex: 0 0 auto;
+  padding: 0;
+  line-height: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+.cy-viewer-thumb img { display: block; width: 44px; height: 44px; object-fit: cover; }
+.cy-viewer-thumb.is-on { border-color: #ff6600; }
+
+@media (max-width: 640px) {
+  .cy-viewer { padding: 8px; }
+  .cy-viewer-stage img { max-height: 54vh; }
+}
+
 /* 블록 도구: 작은 텍스트 링크 [↑] [↓] [삭제] + 연도 칸 */
 .cy-block-tools {
   position: absolute;

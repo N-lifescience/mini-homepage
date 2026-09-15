@@ -45,7 +45,9 @@ export type ContentBlock =
   | (BlockBase & { type: "heading"; text: string })
   | (BlockBase & { type: "text"; text: string })
   | (BlockBase & { type: "link"; label: string; href: string })
-  | (BlockBase & { type: "image"; imageId: string; caption: string });
+  /* 사진 블록은 여러 장을 담을 수 있습니다. imageIds 의 첫 장이 대표 사진이고,
+     imageId 에는 예전 글·예전 화면을 위해 그 첫 장을 똑같이 적어 둡니다. */
+  | (BlockBase & { type: "image"; imageId: string; imageIds?: string[]; caption: string });
 
 /* guestbook 은 이제 탭이 아니라 홈 미니룸 아래에만 있습니다. 예전에 저장된
    탭 목록에 남아 있어도 normalize() 가 걷어냅니다. oekaki 가 낙서장입니다. */
@@ -270,6 +272,23 @@ export function useImages() {
   }, []);
 
   return images;
+}
+
+/* 사진 블록이 들고 있는 사진 id 를 순서대로 돌려줍니다.
+   한 장만 있던 예전 글은 imageIds 가 없으므로 imageId 를 한 장짜리 목록으로 봅니다. */
+export function blockImageIds(block: ContentBlock): string[] {
+  if (block.type !== "image") return [];
+  const list = Array.isArray(block.imageIds) ? block.imageIds.filter(Boolean) : [];
+  if (list.length > 0) return list;
+  return block.imageId ? [block.imageId] : [];
+}
+
+/* 바뀐 사진 목록을 블록에 다시 담을 때 쓰는 조각입니다.
+   대표 사진(첫 장)을 imageId 에도 같이 넣어 두어야, 이 기능이 없던 때에 만들어진
+   화면에서도 사진이 사라지지 않습니다. */
+export function imageIdsPatch(ids: string[]) {
+  const list = ids.filter(Boolean);
+  return { imageId: list[0] ?? "", imageIds: list };
 }
 
 /* 블록이 가리키는 사진의 실제 주소를 돌려줍니다.
