@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { MotionValue } from "motion/react";
 import { asset } from "@/lib/asset";
 import { showroomTheme } from "@/config/showroom/theme";
-import { dnaPoint, polymerasePosition, rnaPoint, strandOpening, smoothProgress as ease } from "@/lib/dna-geometry";
+import { dnaPoint, dnaBaseEndpoints, factorPosition, polymerasePosition, rnaPoint, transcriptionTimeline, smoothProgress as ease } from "@/lib/dna-geometry";
 
 export default function DnaStage({ progress }: { progress: MotionValue<number> }) {
   const host = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
     const element = host.current;
@@ -24,7 +25,10 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
       let renderer: InstanceType<typeof THREE.WebGLRenderer>;
       try {
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
-      } catch { return; }
+      } catch {
+        if (!stopped) setFallback(true);
+        return;
+      }
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 70);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 768 ? 1.5 : 2));
@@ -173,7 +177,6 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
       const vector = new THREE.Vector3();
       const a = new THREE.Vector3();
       const b = new THREE.Vector3();
-      const end = new THREE.Vector3();
       const tangent = new THREE.Vector3();
       const baseSide = new THREE.Vector3();
       const previous = new THREE.Vector3();
@@ -210,7 +213,8 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
         const dt = Math.max(1, Math.min(50, time - lastTime || 16));
         lastTime = time;
         smoothed += (progress.get() - smoothed) * (1 - Math.exp(-dt / 85));
-        const p = reduced ? 0 : smoothed;
+        const p = reduced ? .72 : smoothed;
+        const timeline = transcriptionTimeline(p);
         if (!reduced) molecularTime += dt * 0.00012;
         if (!reduced) idle += dt * 0.000095 * (1 - ease(0.12, 0.8, p) * 0.85);
         const twist = idle * .25;
@@ -224,25 +228,19 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
         }
         for (let i = 0; i < PAIRS; i++) {
           const s = (i + 0.5) / PAIRS;
-          const index = Math.round(s * COUNT);
-          a.copy(points[0][index]);
-          b.copy(points[1][index]);
-          const opening = strandOpening(s, p);
-          end.copy(a).lerp(b, 0.5 * (1 - opening * 0.8));
-          rod(pairMeshes[0], i, a, end, 0.072);
-          end.copy(b).lerp(a, 0.5 * (1 - opening * 0.8));
-          rod(pairMeshes[1], i, b, end, 0.072);
+          for (let strand = 0; strand < 2; strand++) {
+            const [anchor, tip] = dnaBaseEndpoints(s, strand, p, twist);
+            a.set(...anchor); b.set(...tip);
+            rod(pairMeshes[strand], i, a, b, .072);
+          }
         }
 
-        const transcription = ease(0.12, 0.92, p);
+        const transcription = timeline.elongation;
         polymerase.position.set(...polymerasePosition(p, twist));
         polymerase.scale.setScalar(1.07);
         polymerase.rotation.y = -.07;
         factors.children.forEach((factor, index) => {
-          const site = points[index][Math.round(COUNT * .11)];
-          factor.position.copy(site);
-          factor.position.x += (index ? 1 : -1) * .42;
-          factor.position.z += .25;
+          factor.position.set(...factorPosition(index, p, twist));
           factor.rotation.z = (index ? 1 : -1) * .5;
         });
         for (let i = 0; i < NTP_COUNT; i++) {
@@ -293,7 +291,8 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
       function resize() {
         const { width, height } = element!.getBoundingClientRect();
         camera.aspect = width / Math.max(1, height);
-        cameraDistance = camera.aspect < 0.75 ? 21 : 17;
+        // Frame the separated strands, full-length bases, and trailing RNA on narrow screens.
+        cameraDistance = Math.max(17, 5.8 / (Math.tan(THREE.MathUtils.degToRad(17)) * camera.aspect));
         camera.position.set(0, 0, cameraDistance);
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
@@ -329,11 +328,11 @@ export default function DnaStage({ progress }: { progress: MotionValue<number> }
         renderer.domElement.remove();
       };
     }
-    start().catch(() => { /* The Blender poster remains visible if WebGL is unavailable. */ });
+    start().catch(() => { if (!stopped) setFallback(true); });
     return () => { stopped = true; cleanup(); };
   }, [progress]);
 
-  return <div className={`sr-dna-stage${ready ? " is-ready" : ""}`} aria-hidden="true">
+  return <div className={`sr-dna-stage${ready ? " is-ready" : ""}${fallback ? " is-fallback" : ""}`} aria-hidden="true">
     <div className="sr-dna-halo" />
     <img className="sr-dna-poster" src={asset("/visuals/showroom/dna.webp")} alt="" width={960} height={1200} fetchPriority="high" />
     <div ref={host} className="sr-dna-canvas" />

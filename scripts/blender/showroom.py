@@ -129,17 +129,26 @@ if args.asset == 'dna':
     ntp = material('RNA nucleotides', '#f0787d', .08, .48)
     factor = material('Transcription factors', '#5ebbaa', .08, .48)
     base_materials = [material(f'Nucleotide base {i}', color, .04, .46) for i, color in enumerate(['#ad8fdd', '#65bea8', '#dd98b5', '#edba68'])]
+    # A representative elongation frame for reduced motion and the WebGL fallback.
+    progress = .72
+    growth_t = (progress - .38) / (.98 - .38)
+    growth = growth_t * growth_t * (3 - 2 * growth_t)
+    site = .17 + growth * .62
 
     # THREE uses Y up. Preserve the live scene's coordinates in Blender's Z-up frame.
     def xyz(point):
         x, y, z = point
         return (x, -z, y)
 
+    def strand_opening(s):
+        distance = (s - .17 if s < .17 else s - site if s > site else 0) / .13
+        return math.exp(-distance ** 4)
+
     def dna_point(s, strand):
-        opening = math.exp(-((s - .17) / .13) ** 4) * .24
+        opening = strand_opening(s)
         angle = s * math.pi * 5.5 + strand * math.pi
         radius = 1.06 * (1 - opening * .86)
-        return (math.cos(angle) * radius + (1 if strand else -1) * opening * .72 + math.sin(s * math.pi * 1.4) * .28,
+        return (math.cos(angle) * radius + (1 if strand else -1) * opening * 1.6 + math.sin(s * math.pi * 1.4) * .28,
                 (s - .5) * 8.6, math.sin(angle) * radius)
 
     coords = []
@@ -152,15 +161,19 @@ if args.asset == 'dna':
         coords.append(points)
         tube('DNA backbone', points, .068, mat)
     for i in range(36):
-        index = round((i + .5) / 36 * 190)
-        a, b = coords[0][index], coords[1][index]
-        middle = tuple((x + y) / 2 for x, y in zip(a, b))
-        tube('Base pair A', [a, middle], .072, mint)
-        tube('Base pair B', [middle, b], .072, rose)
+        s = (i + .5) / 36
+        for strand, mat in enumerate([factor, rose]):
+            anchor = dna_point(s, strand)
+            closed_angle = s * math.pi * 5.5 + strand * math.pi + math.pi
+            target = math.pi if strand else 0
+            rotation = math.atan2(math.sin(target - closed_angle), math.cos(target - closed_angle))
+            angle = closed_angle + rotation * strand_opening(s)
+            tip = (anchor[0] + math.cos(angle) * 1.06, anchor[1], anchor[2] + math.sin(angle) * 1.06)
+            tube('DNA base', [xyz(anchor), xyz(tip)], .072, mat)
     for radius, z in [(1.85, -4.7), (1.55, -4.8)]:
         bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=.025, location=(0, 0, z))
         apply(bpy.context.object, gold)
-    template = dna_point(.17, 0)
+    template = dna_point(site, 0)
     center = (template[0] + .25, template[1], template[2] + .45)
     lobes = [
         [-.68, .08, .02, .68, .93, .62], [.68, .16, .02, .66, .84, .62],
@@ -181,11 +194,9 @@ if args.asset == 'dna':
             radius = (.068 + (math.sin(i * 7.23) + 1) / 2 * .076) * 1.07
             color = math.floor((math.sin(i * 9.23 + lobe) + 1) * 1.99)
             ball(pos, radius, protein_materials[color], (1, .9, 1.1))
-    for strand in range(2):
+    for strand, offset in enumerate([[-.75, -.38, .52], [.85, .35, .62]]):
         side = 1 if strand else -1
-        x, y, z = dna_point(.11, strand)
-        x += side * .42
-        z += .25
+        x, y, z = tuple(center[j] + offset[j] for j in range(3))
         for ox, oz, radius in [(0, 0, .36), (side * .22, .28, .27), (-side * .17, -.25, .25)]:
             ball(xyz((x + ox, y + oz, z)), radius, factor, (1, .8, 1))
             for i in range(22):
@@ -193,6 +204,22 @@ if args.asset == 'dna':
                 height = 1 - 2 * (i + .5) / 22
                 ring = math.sqrt(1 - height ** 2)
                 ball(xyz((x + ox + ring * math.cos(angle) * radius, y + oz + height * radius, z + ring * math.sin(angle) * radius * .8)), .065, factor)
+    length = (1 + (site - .17) * 8.6) * growth
+
+    def rna_point(s):
+        return (center[0] - .18 - math.sin(s * math.pi * .5) * 2.6 * growth + math.sin(s * math.pi * 5) * .18 * s,
+                center[1] - .32 - s * length, center[2] + .63 + math.sin(s * math.pi * 4) * .20 * s)
+
+    units = max(2, math.ceil(34 * growth))
+    rna_points = [rna_point(i / (units - 1)) for i in range(units)]
+    tube('Single RNA backbone', [xyz(point) for point in rna_points], .028, ntp)
+    for i, point in enumerate(rna_points):
+        ball(xyz(point), .085, ntp)
+        next_point = rna_point(min(1, i / (units - 1) + .01))
+        tangent = Vector(next_point) - Vector(point) if i < units - 1 else Vector(point) - Vector(rna_points[i - 1])
+        base_side = Vector((tangent.y, -tangent.x, 0)).normalized()
+        base = ball(xyz(Vector(point) + base_side * .17), .065, base_materials[i % 4], (1.8, .8, .8))
+        base.rotation_euler.y = -math.atan2(base_side.y, base_side.x)
     for i in range(24):
         angle = i * 2.39996
         radius = 2.4 + (i % 5) * .34
