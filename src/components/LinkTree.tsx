@@ -39,11 +39,11 @@ import {
   type ContentBlock,
   type SiteContent,
   type TabDef,
-  type TabView,
-  type WaveLink
+  type TabView
 } from "@/lib/site-content";
 import { BlockList, EditableText, ViewSwitch } from "@/components/Editable";
 import Oekaki from "@/components/Oekaki";
+import AdminEditor from "@/components/AdminEditor";
 
 /* 진입 화면 셰이더 배경 설정입니다. 색은 theme.ts 를 따릅니다. */
 const spiralProps = {
@@ -976,19 +976,21 @@ function VisitCounter() {
 }
 
 export default function LinkTree() {
-  const { content, isOwner, claimable, signedIn, claimOwnership, update } = useSiteContent();
+  const site = useSiteContent();
+  const { content, ready, loadError, connected, isOwner, claimable, signedIn, claimOwnership, update } = site;
   const images = useImages();
 
   const [activeTabId, setActiveTabId] = useState("home");
   const [introSkipped, setIntroSkipped] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
   const [adminMode, setAdminMode] = useState(false);
   const bgmRef = useRef<BgmHandle>(null);
 
   const tabs = content.tabs;
   const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0];
   /* 편집은 주인장만 켤 수 있습니다. 주인이 아니면 편집 상태를 강제로 끕니다. */
-  const canEdit = isOwner && editing;
+  const canEdit = false;
 
   const setProfile = (patch: Partial<SiteContent["profile"]>) =>
     update({ profile: { ...content.profile, ...patch } });
@@ -1014,61 +1016,15 @@ export default function LinkTree() {
     return () => document.body.classList.remove("lt-intro-open");
   }, [introSkipped]);
 
-  /* ---------------- 탭 추가 / 삭제 / 이름 변경 ---------------- */
-
-  const addTab = () => {
-    const tab: TabDef = { id: newId("tab"), label: "새 탭", kind: "custom" };
-    update({ tabs: [...tabs, tab] });
-    setActiveTabId(tab.id);
-  };
-
-  const renameTab = (id: string, label: string) =>
-    update({ tabs: tabs.map(t => (t.id === id ? { ...t, label } : t)) });
-
-  const removeTab = (id: string) => {
-    if (id === "home") {
-      window.alert("홈 탭은 지울 수 없어요.");
-      return;
-    }
-    if (!window.confirm("이 탭을 지울까요? 안에 쓴 내용도 함께 사라집니다.")) return;
-    const nextBlocks = { ...content.blocks };
-    delete nextBlocks[id];
-    update({ tabs: tabs.filter(t => t.id !== id), blocks: nextBlocks });
-    setActiveTabId("home");
-  };
-
-  const moveTab = (id: string, delta: number) => {
-    const index = tabs.findIndex(t => t.id === id);
-    const next = index + delta;
-    if (index < 0 || next < 0 || next >= tabs.length) return;
-    const copy = [...tabs];
-    [copy[index], copy[next]] = [copy[next], copy[index]];
-    update({ tabs: copy });
-  };
-
-  /* ---------------- 파도타기 링크 ---------------- */
-
   const waveLinks = content.waveLinks;
+  useEffect(() => { if (!isOwner) setEditorOpen(false); }, [isOwner]);
 
-  const replaceWave = (id: string, patch: Partial<WaveLink>) =>
-    update({ waveLinks: waveLinks.map(w => (w.id === id ? { ...w, ...patch } : w)) });
-
-  const removeWave = (id: string) => {
-    if (!window.confirm("이 링크를 지울까요?")) return;
-    update({ waveLinks: waveLinks.filter(w => w.id !== id) });
+  const openEditor = () => { site.beginEditing(); setEditorOpen(true); };
+  const signOut = async () => {
+    if (site.dirty && !window.confirm("저장하지 않은 변경을 취소하고 로그아웃할까요?")) return;
+    site.discard();
+    try { await signOutOfGoogle(); } catch { setAdminError("로그아웃하지 못했어요. 다시 시도해 주세요."); }
   };
-
-  const moveWave = (id: string, delta: number) => {
-    const index = waveLinks.findIndex(w => w.id === id);
-    const next = index + delta;
-    if (index < 0 || next < 0 || next >= waveLinks.length) return;
-    const copy = [...waveLinks];
-    [copy[index], copy[next]] = [copy[next], copy[index]];
-    update({ waveLinks: copy });
-  };
-
-  const addWave = () =>
-    update({ waveLinks: [...waveLinks, { id: newId("wave"), label: "새 링크", href: "" }] });
 
   const renderTab = () => {
     if (!activeTab) return null;
@@ -1100,11 +1056,17 @@ export default function LinkTree() {
     }
   };
 
+  if (!ready) return <div className="site-loading" role="status" aria-live="polite">
+    <div className="site-loading-card"><span className="admin-mark">N</span><h1>{loadError ? "잠시 연결이 끊겼어요" : "최신 내용을 불러오고 있어요"}</h1>
+      <p>{loadError ?? "조금만 기다려 주세요."}</p>{loadError ? <button type="button" className="admin-primary" onClick={site.retry}>다시 불러오기</button> : <span className="site-loading-dots" aria-hidden="true">···</span>}
+    </div>
+  </div>;
+
   /* 본문을 항상 그려 두고 인트로를 그 위에 덮습니다. (.lt-intro 는 position: fixed 입니다)
      BGM 플레이어가 미리 준비되어 있어야 인트로 클릭 한 번으로 재생이 시작됩니다. */
   return (
     <div
-      className="cy-root"
+      className={`cy-root${adminMode ? " has-admin-bar" : ""}`}
       style={{
         backgroundImage:
           "linear-gradient(180deg, rgba(10,5,18,0.4), rgba(10,5,18,0.6)), " +
@@ -1112,6 +1074,17 @@ export default function LinkTree() {
       }}
     >
       <div className="cy-background-pattern"></div>
+      {adminMode ? <div className="admin-bar">
+        <span className="admin-bar-title">미니홈피 관리</span>
+        <span className="admin-bar-status" role="status">{isOwner ? site.saveStatus === "saving" ? "저장 중…" : site.dirty ? "미리보기 · 아직 저장하지 않았어요" : "저장된 최신 내용" : "주인장 계정으로 로그인해 주세요"}</span>
+        <div className="admin-bar-actions">
+          {isOwner ? <><button type="button" onClick={openEditor}>미니홈피 편집</button>{site.dirty ? <button type="button" className="admin-primary" disabled={!connected || site.saveStatus === "saving" || site.conflict} onClick={() => void site.save()}>변경사항 저장</button> : null}<button type="button" className="admin-quiet" disabled={site.saveStatus === "saving"} onClick={() => void signOut()}>로그아웃</button></> : !signedIn ? <button type="button" onClick={async () => { try { setAdminError(null); await signInWithGoogle(); } catch (error) { setAdminError(error instanceof Error ? error.message : "로그인하지 못했어요. 다시 시도해 주세요."); } }}>주인장 로그인</button> : claimable ? <button type="button" onClick={async () => { try { await claimOwnership(); } catch (error) { setAdminError(error instanceof Error ? error.message : "주인 등록에 실패했어요."); } }}>주인장으로 등록</button> : <><span>등록된 주인장 계정이 아니에요</span><button type="button" onClick={() => void signOut()}>로그아웃</button></>}
+        </div>
+        {adminError || site.saveError ? <p className="admin-bar-error" role="alert">{adminError ?? site.saveError}</p> : null}
+      </div> : null}
+      {!connected || loadError ? <div className="site-connection-note" role="status">{loadError ?? "연결이 끊겼어요. 마지막으로 확인한 내용을 보여드리고 있어요."}<button type="button" onClick={site.retry}>다시 연결</button></div> : null}
+      {editorOpen && isOwner ? <AdminEditor state={site} images={images} initialTabId={activeTabId} onClose={() => setEditorOpen(false)} onPreview={id => { setActiveTabId(id); setEditorOpen(false); }} /> : null}
+
 
       <div className="cy-book-wrapper">
         <div className="cy-book-outer">
@@ -1168,35 +1141,8 @@ export default function LinkTree() {
                 </div>
 
                 <div className="cy-left-dropdown">
-                  {canEdit ? (
-                    <div className="cy-wave-edit">
-                      {waveLinks.map(wave => (
-                        <div key={wave.id} className="cy-wave-edit-row">
-                          <EditableText
-                            className="cy-wave-label"
-                            value={wave.label}
-                            editing
-                            placeholder="이름"
-                            onSave={label => replaceWave(wave.id, { label })}
-                          />
-                          <EditableText
-                            className="cy-block-href"
-                            value={wave.href}
-                            editing
-                            placeholder="https://..."
-                            onSave={href => replaceWave(wave.id, { href })}
-                          />
-                          <div className="cy-block-tools cy-wave-tools">
-                            <button type="button" onClick={() => moveWave(wave.id, -1)} title="위로">↑</button>
-                            <button type="button" onClick={() => moveWave(wave.id, 1)} title="아래로">↓</button>
-                            <button type="button" onClick={() => removeWave(wave.id)} title="지우기">✕</button>
-                          </div>
-                        </div>
-                      ))}
-                      <button type="button" className="cy-wave-add" onClick={addWave}>+ 링크 추가</button>
-                    </div>
-                  ) : (
                     <select
+                      aria-label="파도타기"
                       value=""
                       onChange={event => {
                         const target = waveLinks.find(w => w.id === event.target.value);
@@ -1210,7 +1156,6 @@ export default function LinkTree() {
                         <option key={wave.id} value={wave.id}>{wave.label}</option>
                       ))}
                     </select>
-                  )}
                 </div>
               </div>
             </div>
@@ -1219,64 +1164,6 @@ export default function LinkTree() {
             <div className="cy-right-panel">
               <div className="cy-right-header">
                 <span className="cy-title">{activeTab?.label}</span>
-                {adminMode ? (
-                  <span className="cy-admin-links">
-                    {isOwner ? (
-                      <>
-                        <span className="cy-admin-me">주인장</span>
-                        <button
-                          type="button"
-                          className={`cy-admin-link${editing ? " is-on" : ""}`}
-                          onClick={() => setEditing(v => !v)}
-                        >
-                          {editing ? "편집 끝" : "편집"}
-                        </button>
-                        <button type="button" className="cy-admin-link" onClick={() => signOutOfGoogle()}>
-                          로그아웃
-                        </button>
-                      </>
-                    ) : !signedIn ? (
-                      <button
-                        type="button"
-                        className="cy-admin-link"
-                        onClick={async () => {
-                          try {
-                            await signInWithGoogle();
-                          } catch {
-                            window.alert("로그인하지 못했어요. 팝업 차단을 풀고 다시 시도해 주세요.");
-                          }
-                        }}
-                      >
-                        주인장 로그인
-                      </button>
-                    ) : claimable ? (
-                      <button
-                        type="button"
-                        className="cy-admin-link"
-                        onClick={async () => {
-                          try {
-                            await claimOwnership();
-                          } catch (error) {
-                            window.alert(
-                              error instanceof Error
-                                ? `주인 등록에 실패했어요: ${error.message}`
-                                : "주인 등록에 실패했어요."
-                            );
-                          }
-                        }}
-                      >
-                        내가 주인입니다
-                      </button>
-                    ) : (
-                      <>
-                        <span className="cy-admin-me">다른 계정이 주인이에요</span>
-                        <button type="button" className="cy-admin-link" onClick={() => signOutOfGoogle()}>
-                          로그아웃
-                        </button>
-                      </>
-                    )}
-                  </span>
-                ) : null}
                 <EditableText
                   className="cy-url"
                   value={content.profile.displayUrl}
@@ -1294,35 +1181,15 @@ export default function LinkTree() {
               {tabs.map(tab => (
                 <div key={tab.id} className="cy-tab-slot">
                   <button
-                    className={"cy-tab-btn " + (activeTabId === tab.id ? "active" : "")}
+                    className={"cy-tab-btn " + (activeTab?.id === tab.id ? "active" : "")}
                     onClick={() => setActiveTabId(tab.id)}
                   >
                     <span className="cy-tab-line">{tab.label}</span>
                   </button>
-                  {canEdit ? (
-                    <div className="cy-tab-tools">
-                      <button
-                        type="button"
-                        title="탭 이름 바꾸기"
-                        onClick={() => {
-                          const label = window.prompt("탭 이름", tab.label);
-                          if (label && label.trim()) renameTab(tab.id, label.trim());
-                        }}
-                      >
-                        ✎
-                      </button>
-                      <button type="button" title="위로" onClick={() => moveTab(tab.id, -1)}>↑</button>
-                      <button type="button" title="아래로" onClick={() => moveTab(tab.id, 1)}>↓</button>
-                      {tab.id === "home" ? null : (
-                        <button type="button" title="탭 지우기" onClick={() => removeTab(tab.id)}>✕</button>
-                      )}
-                    </div>
-                  ) : null}
+
                 </div>
               ))}
-              {canEdit ? (
-                <button type="button" className="cy-tab-add" onClick={addTab}>+ 탭</button>
-              ) : null}
+
             </div>
 
           </div>

@@ -8,15 +8,18 @@
    - 사진은 문서 크기 제한(1MB) 때문에 본문에 같이 넣지 않고, images 컬렉션에
      한 장씩 따로 저장한 뒤 블록에서는 그 id 만 가리킵니다. */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
   onSnapshot,
-  setDoc
+  runTransaction,
+  serverTimestamp
 } from "firebase/firestore";
+import { asset } from "./asset";
+import { contentFingerprint, validateContent } from "./editor-state";
 import {
   currentUser,
   getStore,
@@ -122,16 +125,16 @@ function defaultProfileBlocks(): ContentBlock[] {
     section.blocks.forEach(block => {
       if (block.kind === "text") {
         block.lines.forEach(line => {
-          blocks.push({ id: newId("b"), type: "text", text: line });
+          blocks.push({ id: `profile-${blocks.length}`, type: "text", text: line });
         });
       } else if (block.kind === "list") {
-        blocks.push({ id: newId("b"), type: "heading", text: block.heading });
+        blocks.push({ id: `profile-${blocks.length}`, type: "heading", text: block.heading });
         block.items.forEach(item => {
-          blocks.push({ id: newId("b"), type: "text", text: `· ${item}` });
+          blocks.push({ id: `profile-${blocks.length}`, type: "text", text: `· ${item}` });
         });
       } else {
         block.items.forEach(item => {
-          blocks.push({ id: newId("b"), type: "link", label: item.label || item.value, href: item.href });
+          blocks.push({ id: `profile-${blocks.length}`, type: "link", label: item.label || item.value, href: item.href });
         });
       }
     });
@@ -166,7 +169,7 @@ export function defaultContent(): SiteContent {
     blocks: {
       profile: defaultProfileBlocks(),
       photo: staticPhotos.map(p => ({
-        id: newId("b"),
+        id: `photo-${p.id}`,
         type: "image" as const,
         imageId: `static:${p.src}`,
         caption: p.name
@@ -185,22 +188,23 @@ export function defaultContent(): SiteContent {
 }
 
 /* Firestore 에서 읽어온 값에 빠진 항목이 있어도 화면이 깨지지 않게 채웁니다. */
-function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
+export function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
   const base = defaultContent();
   if (!raw) return base;
-  /* 예전에 저장된 탭 목록에 방명록 탭이 남아 있으면 빼고, 낙서장 탭이 없으면 붙입니다. */
+  /* Remove the legacy guestbook tab without resurrecting deleted optional tabs. */
   let tabs = Array.isArray(raw.tabs) && raw.tabs.length > 0 ? raw.tabs : base.tabs;
   tabs = tabs.filter(t => t.kind !== "guestbook");
-  if (!tabs.some(t => t.kind === "oekaki")) {
-    tabs = [...tabs, { id: "oekaki", label: "낙서장", kind: "oekaki" }];
-  }
+  if (!tabs.some(t => t.kind === "home")) tabs = [base.tabs[0], ...tabs];
+  const fixed = base.waveLinks[0];
+  const savedWaves = Array.isArray(raw.waveLinks) ? raw.waveLinks : base.waveLinks;
+  const savedFixed = savedWaves.find(w => w.id === fixed.id);
   return {
     ownerUid: typeof raw.ownerUid === "string" ? raw.ownerUid : null,
     profile: { ...base.profile, ...(raw.profile ?? {}) },
     tabs,
     blocks: raw.blocks && typeof raw.blocks === "object" ? raw.blocks : base.blocks,
     boardPosts: Array.isArray(raw.boardPosts) ? raw.boardPosts : base.boardPosts,
-    waveLinks: Array.isArray(raw.waveLinks) ? raw.waveLinks : base.waveLinks
+    waveLinks: [{ ...fixed, href: savedFixed?.href ?? fixed.href }, ...savedWaves.filter(w => w.id !== fixed.id)]
   };
 }
 
@@ -294,7 +298,7 @@ export function imageIdsPatch(ids: string[]) {
 /* 블록이 가리키는 사진의 실제 주소를 돌려줍니다.
    "static:/assets/..." 는 저장소에 원래 들어 있던 파일을 그대로 가리킵니다. */
 export function resolveImageSrc(imageId: string, images: Record<string, string>) {
-  if (imageId.startsWith("static:")) return imageId.slice("static:".length);
+  if (imageId.startsWith("static:")) return asset(imageId.slice("static:".length));
   return images[imageId] ?? "";
 }
 
@@ -302,74 +306,229 @@ export function resolveImageSrc(imageId: string, images: Record<string, string>)
 /* 본문 구독 + 저장                                                     */
 /* ------------------------------------------------------------------ */
 
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
 export type SiteContentState = {
   content: SiteContent;
   ready: boolean;
-  /* 로그인한 사람이 이 미니홈피의 주인장인지 */
+  loadError: string | null;
+  connected: boolean;
   isOwner: boolean;
-  /* 아직 주인이 정해지지 않아서 지금 등록할 수 있는 상태인지 */
   claimable: boolean;
   signedIn: boolean;
+  dirty: boolean;
+  conflict: boolean;
+  saveStatus: SaveStatus;
+  saveError: string | null;
+  canUndo: boolean;
+  canRedo: boolean;
   claimOwnership: () => Promise<void>;
-  update: (patch: Partial<SiteContent>) => Promise<void>;
+  beginEditing: () => void;
+  update: (patch: Partial<SiteContent>) => void;
+  save: () => Promise<boolean>;
+  discard: () => void;
+  undo: () => void;
+  redo: () => void;
+  retry: () => void;
 };
 
 export function useSiteContent(): SiteContentState {
-  const [content, setContent] = useState<SiteContent>(defaultContent);
+  const [published, setPublished] = useState<SiteContent>(defaultContent);
+  const [draft, setDraft] = useState<SiteContent | null>(null);
   const [ready, setReady] = useState(!isEditableSiteEnabled);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(!isEditableSiteEnabled);
   const [uid, setUid] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const publishedRef = useRef(published);
+  const draftRef = useRef<SiteContent | null>(null);
+  const baselineRef = useRef(published);
+  const past = useRef<SiteContent[]>([]);
+  const future = useRef<SiteContent[]>([]);
+  const savingRef = useRef(false);
+  const content = draft ?? published;
+  const dirty = Boolean(draft && contentFingerprint(draft) !== contentFingerprint(baselineRef.current));
+  const conflict = Boolean(draft && contentFingerprint(published) !== contentFingerprint(baselineRef.current));
 
-  useEffect(() => subscribeAuthState(user => setUid(user?.uid ?? null)), []);
+  useEffect(() => subscribeAuthState(user => {
+    setUid(user?.uid ?? null);
+    draftRef.current = null;
+    setDraft(null);
+    past.current = [];
+    future.current = [];
+    setHistoryVersion(v => v + 1);
+  }), []);
 
   useEffect(() => {
     const store = getStore();
     if (!store) return;
-    return onSnapshot(
-      doc(store, "site", "content"),
-      snapshot => {
-        const next = normalize(snapshot.data() as Partial<SiteContent> | undefined);
-        /* 낙서장 등 이 문서를 직접 안 보는 화면도 같은 주인장 기준을 쓰게 알려 줍니다. */
-        setKnownOwnerUid(next.ownerUid);
-        setContent(next);
-        setReady(true);
-      },
-      () => setReady(true)
-    );
+    setLoadError(null);
+    let received = false;
+    const timer = window.setTimeout(() => {
+      if (!received) setLoadError("최신 내용을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
+    }, 12000);
+    const unsubscribe = onSnapshot(doc(store, "site", "content"), { includeMetadataChanges: true }, snapshot => {
+      // Cached defaults and unacknowledged writes must never masquerade as live content.
+      if (snapshot.metadata.hasPendingWrites) return;
+      setConnected(!snapshot.metadata.fromCache);
+      if (snapshot.metadata.fromCache) return;
+      received = true;
+      window.clearTimeout(timer);
+      const next = normalize(snapshot.data() as Partial<SiteContent> | undefined);
+      setKnownOwnerUid(next.ownerUid);
+      // An untouched editor follows live changes; only actual edits need conflict protection.
+      if (draftRef.current && contentFingerprint(draftRef.current) === contentFingerprint(baselineRef.current)
+        && contentFingerprint(next) !== contentFingerprint(baselineRef.current)) {
+        baselineRef.current = next;
+        draftRef.current = next;
+        setDraft(next);
+        past.current = [];
+        future.current = [];
+        setHistoryVersion(v => v + 1);
+      }
+      publishedRef.current = next;
+      setPublished(next);
+      setLoadError(null);
+      setReady(true);
+    }, () => {
+      window.clearTimeout(timer);
+      setConnected(false);
+      setLoadError("내용을 불러오지 못했어요. 다시 시도해 주세요.");
+    });
+    const onOffline = () => setConnected(false);
+    const onOnline = () => setAttempt(v => v + 1);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      unsubscribe();
+      window.clearTimeout(timer);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [attempt]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [dirty]);
+
+  const beginEditing = useCallback(() => {
+    if (draftRef.current) return;
+    baselineRef.current = publishedRef.current;
+    draftRef.current = publishedRef.current;
+    setDraft(draftRef.current);
+    past.current = [];
+    future.current = [];
+    setHistoryVersion(v => v + 1);
+    setSaveStatus("idle");
+    setSaveError(null);
   }, []);
 
-  /* 저장은 화면에 먼저 반영하고 뒤에서 씁니다. 그래야 타이핑이 끊기지 않습니다. */
-  const update = useCallback(
-    async (patch: Partial<SiteContent>) => {
-      const store = getStore();
-      setContent(prev => ({ ...prev, ...patch }));
-      if (!store) return;
-      await setDoc(doc(store, "site", "content"), patch, { merge: true });
-    },
-    []
-  );
+  const update = useCallback((patch: Partial<SiteContent>) => {
+    if (savingRef.current) return;
+    const prev = draftRef.current ?? publishedRef.current;
+    const next = { ...prev, ...patch };
+    if (contentFingerprint(next) === contentFingerprint(prev)) return;
+    if (!draftRef.current) baselineRef.current = publishedRef.current;
+    past.current = [...past.current.slice(-99), prev];
+    future.current = [];
+    draftRef.current = next;
+    setDraft(next);
+    setSaveStatus("idle");
+    setSaveError(null);
+    setHistoryVersion(v => v + 1);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (savingRef.current || !past.current.length || !draftRef.current) return;
+    future.current.push(draftRef.current);
+    draftRef.current = past.current.pop()!;
+    setDraft(draftRef.current);
+    setSaveStatus("idle");
+    setSaveError(null);
+    setHistoryVersion(v => v + 1);
+  }, []);
+  const redo = useCallback(() => {
+    if (savingRef.current || !future.current.length || !draftRef.current) return;
+    past.current.push(draftRef.current);
+    draftRef.current = future.current.pop()!;
+    setDraft(draftRef.current);
+    setSaveStatus("idle");
+    setSaveError(null);
+    setHistoryVersion(v => v + 1);
+  }, []);
+  const discard = useCallback(() => {
+    if (savingRef.current) return;
+    draftRef.current = null;
+    setDraft(null);
+    past.current = [];
+    future.current = [];
+    setSaveStatus("idle");
+    setSaveError(null);
+    setHistoryVersion(v => v + 1);
+  }, []);
+
+  const save = useCallback(async () => {
+    if (savingRef.current) return false;
+    const store = getStore();
+    const user = currentUser();
+    const next = draftRef.current;
+    if (!next) return true;
+    const validation = validateContent(next);
+    if (validation || !store || !user || user.uid !== next.ownerUid || !navigator.onLine) {
+      setSaveStatus("error");
+      setSaveError(validation ?? (!navigator.onLine ? "인터넷 연결이 끊겼어요. 연결한 뒤 다시 저장해 주세요." : "주인장 계정으로 로그인한 뒤 저장해 주세요."));
+      return false;
+    }
+    savingRef.current = true;
+    setSaveStatus("saving");
+    setSaveError(null);
+    try {
+      await runTransaction(store, async transaction => {
+        const ref = doc(store, "site", "content");
+        const latest = normalize((await transaction.get(ref)).data() as Partial<SiteContent> | undefined);
+        if (contentFingerprint(latest) !== contentFingerprint(baselineRef.current)) {
+          throw new Error("다른 창에서 내용이 바뀌었어요. 편집한 내용을 복사한 뒤 변경 취소를 눌러 최신 내용을 확인해 주세요.");
+        }
+        transaction.set(ref, { ...next, updatedAt: serverTimestamp() });
+      });
+      baselineRef.current = next;
+      publishedRef.current = next;
+      setPublished(next);
+      setSaveStatus("saved");
+      return true;
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveError(error instanceof Error && !('code' in error) ? error.message : "저장하지 못했어요. 수정한 내용은 그대로 있으니 다시 저장해 주세요.");
+      return false;
+    } finally { savingRef.current = false; }
+  }, []);
 
   const claimOwnership = useCallback(async () => {
     const store = getStore();
     const user = currentUser();
     if (!store || !user) throw new Error("먼저 구글 로그인을 해 주세요.");
-    const base = defaultContent();
-    await setDoc(
-      doc(store, "site", "content"),
-      { ...base, ownerUid: user.uid },
-      { merge: true }
-    );
+    await runTransaction(store, async transaction => {
+      const ref = doc(store, "site", "content");
+      const snapshot = await transaction.get(ref);
+      const existing = normalize(snapshot.data() as Partial<SiteContent> | undefined);
+      if (existing.ownerUid && existing.ownerUid !== user.uid) throw new Error("이미 등록된 주인장이 있어요.");
+      transaction.set(ref, { ...existing, ownerUid: user.uid, updatedAt: serverTimestamp() });
+    });
   }, []);
 
-  return useMemo(
-    () => ({
-      content,
-      ready,
-      isOwner: Boolean(uid && content.ownerUid && uid === content.ownerUid),
-      claimable: Boolean(uid && !content.ownerUid),
-      signedIn: Boolean(uid),
-      claimOwnership,
-      update
-    }),
-    [content, ready, uid, claimOwnership, update]
-  );
+  return useMemo(() => ({ content, ready, loadError, connected,
+    isOwner: Boolean(uid && published.ownerUid && uid === published.ownerUid),
+    claimable: Boolean(ready && connected && uid && !published.ownerUid), signedIn: Boolean(uid),
+    dirty, conflict, saveStatus, saveError, canUndo: past.current.length > 0, canRedo: future.current.length > 0,
+    claimOwnership, beginEditing, update, save, discard, undo, redo, retry: () => setAttempt(v => v + 1)
+  }), [content, published, ready, loadError, connected, uid, dirty, conflict, saveStatus, saveError,
+    historyVersion, claimOwnership, beginEditing, update, save, discard, undo, redo]);
 }

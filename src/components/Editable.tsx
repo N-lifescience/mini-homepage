@@ -15,15 +15,10 @@ import {
 } from "@/lib/site-content";
 import PhotoViewer from "@/components/PhotoViewer";
 
-/* 글자 한 줄을 눌러서 고칩니다. 여러 줄이면 multiline 을 켭니다. */
+/* Editing uses real, labelled fields. Changes stay in the draft until Save. */
 export function EditableText({
-  value,
-  onSave,
-  editing,
-  multiline = false,
-  placeholder = "내용을 적어 주세요",
-  className,
-  as: Tag = "span"
+  value, onSave, editing, multiline = false, placeholder = "내용을 적어 주세요",
+  className, as: Tag = "span", label
 }: {
   value: string;
   onSave: (next: string) => void;
@@ -32,71 +27,18 @@ export function EditableText({
   placeholder?: string;
   className?: string;
   as?: "span" | "div" | "p" | "figcaption";
+  label?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const ref = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
-
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => {
-    if (open) ref.current?.focus();
-  }, [open]);
-
-  const commit = () => {
-    setOpen(false);
-    const next = draft.trim();
-    if (next !== value) onSave(next);
-  };
-
-  if (!editing) {
-    return <Tag className={className}>{value || placeholder}</Tag>;
-  }
-
-  if (!open) {
-    return (
-      <Tag
-        className={`${className ?? ""} cy-editable`.trim()}
-        onClick={() => setOpen(true)}
-        title="눌러서 고치기"
-      >
-        {value || <span className="cy-editable-empty">{placeholder}</span>}
-      </Tag>
-    );
-  }
-
+  if (!editing) return <Tag className={className}>{value}</Tag>;
   const shared = {
-    ref: ref as never,
-    value: draft,
-    placeholder,
-    onBlur: commit,
+    value, placeholder, "aria-label": label ?? placeholder,
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onSave(event.target.value),
     className: "cy-edit-input"
   };
-
-  return multiline ? (
-    <textarea
-      {...shared}
-      rows={Math.max(2, draft.split("\n").length)}
-      onChange={e => setDraft(e.target.value)}
-      onKeyDown={e => {
-        if (e.key === "Escape") {
-          setDraft(value);
-          setOpen(false);
-        }
-      }}
-    />
-  ) : (
-    <input
-      {...shared}
-      onChange={e => setDraft(e.target.value)}
-      onKeyDown={e => {
-        if (e.key === "Enter") commit();
-        if (e.key === "Escape") {
-          setDraft(value);
-          setOpen(false);
-        }
-      }}
-    />
-  );
+  return <label className="cy-edit-field">
+    <span>{label ?? placeholder}</span>
+    {multiline ? <textarea {...shared} rows={Math.min(10, Math.max(3, value.split("\n").length))} /> : <input {...shared} />}
+  </label>;
 }
 
 /* 목록 / 앨범 / 연도별 보기를 고르는 작은 탭입니다. 싸이월드 사진첩의 보기 전환처럼요. */
@@ -147,13 +89,17 @@ export function BlockList({
   onChange,
   editing,
   images,
-  view = "list"
+  view = "list",
+  onBusyChange,
+  showYear = true
 }: {
   blocks: ContentBlock[];
   onChange: (next: ContentBlock[]) => void;
   editing: boolean;
   images: Record<string, string>;
   view?: TabView;
+  onBusyChange?: (busy: boolean) => void;
+  showYear?: boolean;
 }) {
   /* 사진을 여러 장 한꺼번에 올릴 때 어느 블록에 몇 장째인지 보여 주려고 들고 있습니다. */
   const [uploading, setUploading] = useState<{ blockId: string; done: number; total: number } | null>(null);
@@ -164,6 +110,14 @@ export function BlockList({
      항상 가장 최근 목록 위에 고쳐 쓰도록 여기에 담아 둡니다. */
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+  const addedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!addedIdRef.current) return;
+    const element = document.getElementById(`editor-block-${addedIdRef.current}`);
+    element?.scrollIntoView({ block: "nearest", behavior: "instant" });
+    element?.querySelector<HTMLInputElement | HTMLTextAreaElement>("textarea, input:not([inputmode=numeric])")?.focus();
+    addedIdRef.current = null;
+  }, [blocks]);
 
   const replace = (id: string, patch: Partial<ContentBlock>) =>
     onChange(blocksRef.current.map(b => (b.id === id ? ({ ...b, ...patch } as ContentBlock) : b)));
@@ -192,13 +146,15 @@ export function BlockList({
           : type === "link"
             ? { ...base, type: "link", label: "", href: "" }
             : { ...base, type: "image", imageId: "", imageIds: [], caption: "" };
+    addedIdRef.current = created.id;
     onChange([...blocks, created]);
   };
 
   /* 고른 사진을 차례로 올려서 이 블록 뒤에 붙입니다. 여러 장을 한 번에 골라도 됩니다.
      한 장이라도 올라갔으면 도중에 실패해도 올라간 만큼은 남깁니다. */
   const pickImages = async (block: ContentBlock, files: File[]) => {
-    if (files.length === 0) return;
+    if (files.length === 0 || uploading) return;
+    onBusyChange?.(true);
     setUploading({ blockId: block.id, done: 0, total: files.length });
     const added: string[] = [];
     try {
@@ -214,6 +170,7 @@ export function BlockList({
         replace(block.id, imageIdsPatch([...blockImageIds(latest), ...added]) as Partial<ContentBlock>);
       }
       setUploading(null);
+      onBusyChange?.(false);
     }
   };
 
@@ -251,6 +208,9 @@ export function BlockList({
 
   const renderBlock = (block: ContentBlock) => {
     const inner = (() => {
+      if (!editing && (block.type === "text" || block.type === "heading") && /^-{4,}$/.test(block.text.trim())) {
+        return <hr className="cy-block-divider" />;
+      }
       if (block.type === "heading") {
         return (
           <EditableText
@@ -259,6 +219,7 @@ export function BlockList({
             value={block.text}
             editing={editing}
             placeholder="소제목"
+            label="소제목"
             onSave={text => replace(block.id, { text } as Partial<ContentBlock>)}
           />
         );
@@ -272,6 +233,7 @@ export function BlockList({
             editing={editing}
             multiline
             placeholder="내용을 적어 주세요"
+            label="본문"
             onSave={text => replace(block.id, { text } as Partial<ContentBlock>)}
           />
         );
@@ -291,6 +253,7 @@ export function BlockList({
                 value={block.href}
                 editing
                 placeholder="https://..."
+                label="링크 주소"
                 onSave={href => replace(block.id, { href } as Partial<ContentBlock>)}
               />
             </div>
@@ -354,7 +317,13 @@ export function BlockList({
                   ))}
                 </div>
               ) : null}
-              <label className="cy-image-pick">
+              <label className="cy-image-pick" role="button" tabIndex={uploading ? -1 : 0} aria-disabled={Boolean(uploading)}
+                onKeyDown={event => {
+                  if (!uploading && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    event.currentTarget.querySelector("input")?.click();
+                  }
+                }}>
                 {uploading && uploading.blockId === block.id
                   ? `올리는 중 ${uploading.done}/${uploading.total}…`
                   : ids.length > 0
@@ -365,6 +334,7 @@ export function BlockList({
                   accept="image/*"
                   multiple
                   hidden
+                  disabled={Boolean(uploading)}
                   onChange={e => {
                     const files = Array.from(e.target.files ?? []);
                     e.target.value = "";
@@ -399,31 +369,27 @@ export function BlockList({
     }
 
     return (
-      <div key={block.id} className={`cy-block is-${block.type} is-editing`}>
-        <div className="cy-block-tools">
-          <label className="cy-year-chip" title="연도별 보기에서 묶는 기준">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="연도"
-              maxLength={4}
-              defaultValue={block.year ?? ""}
-              onBlur={e => {
-                const year = e.target.value.trim();
-                if (year !== (block.year ?? "")) replace(block.id, { year } as Partial<ContentBlock>);
-              }}
-            />
-          </label>
-          <button type="button" onClick={() => move(block.id, -1)}>[↑]</button>
-          <button type="button" onClick={() => move(block.id, 1)}>[↓]</button>
-          <button type="button" className="is-danger" onClick={() => remove(block.id)}>[삭제]</button>
+      <div key={block.id} id={`editor-block-${block.id}`} className={`cy-block is-${block.type} is-editing`}>
+        <div className="cy-block-editor-head">
+          <span className="cy-block-kind">{{ heading: "소제목", text: "글", link: "링크", image: "사진" }[block.type]}</span>
+          <div className="cy-block-tools">
+            <button type="button" disabled={Boolean(uploading) || blocks[0]?.id === block.id} aria-label="내용 위로 이동" onClick={() => move(block.id, -1)}>↑</button>
+            <button type="button" disabled={Boolean(uploading) || blocks.at(-1)?.id === block.id} aria-label="내용 아래로 이동" onClick={() => move(block.id, 1)}>↓</button>
+            <button type="button" disabled={Boolean(uploading)} onClick={() => onChange([...blocksRef.current, { ...block, id: newId("b") }])}>복제</button>
+            <button type="button" disabled={Boolean(uploading)} className="is-danger" onClick={() => remove(block.id)}>삭제</button>
+          </div>
         </div>
+        {showYear ? <label className="cy-edit-field cy-block-year">
+          <span>연도 <small>선택</small></span>
+          <input type="text" inputMode="numeric" placeholder="예: 2026" maxLength={4} value={block.year ?? ""}
+            onChange={event => replace(block.id, { year: event.target.value })} />
+        </label> : null}
         {inner}
       </div>
     );
   };
 
-  const layoutClass = view === "list" ? "cy-block-article" : "cy-block-grid";
+  const layoutClass = editing || view === "list" ? "cy-block-article" : "cy-block-grid";
 
   /* 크게 보기 화면에 넘겨 줄 사진들입니다. 아직 안 불러온 사진은 빼고 보여 줍니다. */
   const found = blocks.find(b => b.id === viewerBlockId);
@@ -434,7 +400,17 @@ export function BlockList({
 
   return (
     <>
-      {groups ? (
+      {editing ? (
+        <div className="cy-block-add">
+          <span className="cy-block-add-label">추가</span>
+          <button type="button" disabled={Boolean(uploading)} onClick={() => add("heading")}>+ 소제목</button>
+          <button type="button" disabled={Boolean(uploading)} onClick={() => add("text")}>+ 글</button>
+          <button type="button" disabled={Boolean(uploading)} onClick={() => add("image")}>+ 사진</button>
+          <button type="button" disabled={Boolean(uploading)} onClick={() => add("link")}>+ 링크</button>
+        </div>
+      ) : null}
+
+      {groups && !editing ? (
         groups.map(([year, list]) => (
           <section key={year} className="cy-year-group">
             <div className="cy-year-head">
@@ -452,15 +428,7 @@ export function BlockList({
         <div className="cy-empty-box">아직 내용이 없습니다.</div>
       ) : null}
 
-      {editing ? (
-        <div className="cy-block-add">
-          <span className="cy-block-add-label">추가</span>
-          <button type="button" onClick={() => add("heading")}>소제목</button>
-          <button type="button" onClick={() => add("text")}>글</button>
-          <button type="button" onClick={() => add("image")}>사진</button>
-          <button type="button" onClick={() => add("link")}>링크</button>
-        </div>
-      ) : null}
+
 
       {viewerBlock && viewerSrcs.length > 0 ? (
         <PhotoViewer

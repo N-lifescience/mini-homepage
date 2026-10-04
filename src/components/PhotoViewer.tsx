@@ -3,7 +3,7 @@
 /* 사진 여러 장이 들어 있는 글을 눌렀을 때 크게 넘겨 보는 화면입니다.
    목록에서는 대표 사진 한 장만 보이고, 누르면 이 화면이 덮으면서 전부 보입니다. */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function PhotoViewer({
   srcs,
@@ -17,6 +17,7 @@ export default function PhotoViewer({
   onClose: () => void;
 }) {
   const total = srcs.length;
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(() => Math.min(Math.max(startIndex, 0), Math.max(total - 1, 0)));
 
   const go = useCallback(
@@ -29,13 +30,21 @@ export default function PhotoViewer({
 
   /* 키보드로도 넘기고 닫을 수 있게 합니다. */
   useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    dialogRef.current?.querySelector<HTMLButtonElement>(".cy-viewer-close")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft") go(-1);
       if (e.key === "ArrowRight") go(1);
+      if (e.key === "Tab") {
+        const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+        const first = buttons[0], last = buttons.at(-1);
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); previousFocus?.focus(); };
   }, [go, onClose]);
 
   /* 열려 있는 동안 뒤쪽 화면이 같이 굴러가지 않게 잠급니다. */
@@ -50,7 +59,7 @@ export default function PhotoViewer({
   if (total === 0) return null;
 
   return (
-    <div className="cy-viewer" role="dialog" aria-modal="true" onClick={onClose}>
+    <div ref={dialogRef} className="cy-viewer" role="dialog" aria-modal="true" aria-label={caption || "사진"} onClick={onClose}>
       <div className="cy-viewer-box" onClick={e => e.stopPropagation()}>
         <div className="cy-viewer-head">
           <span className="cy-viewer-caption">{caption || "사진"}</span>
