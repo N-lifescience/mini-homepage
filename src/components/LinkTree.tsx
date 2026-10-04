@@ -102,10 +102,16 @@ function IntroOverlay({
       <div className="lt-intro-card">
         <span className="lt-intro-title">{title}</span>
         <p className="lt-intro-copy">{description}</p>
-        <button type="button" className="lt-intro-cta" onClick={onBrowse}>
-          모든 활동 구경하기
-          <ChevronDown size={18} />
-        </button>
+        <div className="lt-intro-actions">
+          <button type="button" className="lt-intro-cta" onClick={onBrowse}>
+            미니홈피
+            <ChevronDown size={18} />
+          </button>
+          <a className="lt-intro-cta lt-intro-showroom" href={asset("/showroom/")}>
+            쇼룸
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -1058,7 +1064,7 @@ export default function LinkTree() {
       {editorOpen && isOwner ? <AdminEditor state={site} images={images} initialTabId={activeTabId} onClose={() => setEditorOpen(false)} onPreview={id => { setActiveTabId(id); setEditorOpen(false); }} /> : null}
 
 
-      <div className="cy-book-wrapper">
+      <div className="cy-book-wrapper" inert={!introSkipped}>
         <div className="cy-book-outer">
 
           {/* 바인더 링 */}

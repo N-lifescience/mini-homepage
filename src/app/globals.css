@@ -109,6 +109,35 @@ body.lt-intro-open {
   font-size: 1rem;
   font-weight: 900;
   box-shadow: 0 16px 32px -14px rgba(255,214,10,0.55), 0 0 0 5px rgba(177,78,255,0.28);
+  text-decoration: none;
+  transition: transform 180ms, background 180ms;
+}
+
+.lt-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 1.3rem;
+}
+
+.lt-intro-actions .lt-intro-cta {
+  margin-top: 0;
+  min-width: 144px;
+  gap: 16px;
+}
+
+.lt-intro-showroom {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.lt-intro-cta:hover { transform: translateY(-3px); }
+.lt-intro-cta:focus-visible { outline: 3px solid var(--brown); outline-offset: 7px; }
+
+@media (max-width: 375px) {
+  .lt-intro-actions { gap: 12px; }
+  .lt-intro-actions .lt-intro-cta { min-width: 116px; padding-inline: 18px; }
 }
 
 @keyframes lt-intro-card {
