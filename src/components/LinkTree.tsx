@@ -41,7 +41,7 @@ import {
   type TabDef,
   type TabView
 } from "@/lib/site-content";
-import { BlockList, EditableText, ViewSwitch } from "@/components/Editable";
+import { BlockList, EditableText } from "@/components/Editable";
 import Oekaki from "@/components/Oekaki";
 import AdminEditor from "@/components/AdminEditor";
 
@@ -460,42 +460,15 @@ function HomeTab({
   );
 }
 
-/* 목록/앨범/연도별 보기를 고를 수 있는 탭입니다.
-   - 방문자가 고르면 이 화면에서만 잠깐 바뀝니다.
-   - 주인장이 편집 중에 고르면 그 탭의 기본 보기로 저장됩니다. */
-function BlocksTab(
-  props: TabViewProps & { defaultView?: TabView; views?: TabView[]; hideSwitch?: boolean }
-) {
-  const { tab, content, editing, images, update } = props;
+/* Profile text stays in a list; activity photos are always grouped by year. */
+function BlocksTab(props: TabViewProps) {
+  const { tab, content, editing, images } = props;
   const blocks = content.blocks[tab.id] ?? [];
-  const allowed = props.views ?? (["list", "album", "year"] as TabView[]);
-  const savedView: TabView = tab.view ?? props.defaultView ?? allowed[0];
-  const [localView, setLocalView] = useState<TabView | null>(null);
-  /* 저장된 보기가 이 탭에서 못 고르는 것이면(예: 앨범 전용 탭에 목록이 남아 있으면)
-     첫 번째 것으로 대신합니다. */
-  const picked = localView ?? savedView;
-  const view = allowed.includes(picked) ? picked : allowed[0];
-
-  /* 탭이 바뀌면 방문자가 잠깐 골랐던 보기는 잊습니다. */
-  useEffect(() => setLocalView(null), [tab.id]);
-
-  const changeView = (next: TabView) => {
-    setLocalView(next);
-    if (editing) {
-      update({ tabs: content.tabs.map(t => (t.id === tab.id ? { ...t, view: next } : t)) });
-    }
-  };
+  const view: TabView = tab.kind === "profile" ? "list" : "year";
 
   return (
     <div className="cy-content-box">
-      <SectionTitle
-        title={tab.label}
-        sub={
-          props.hideSwitch ? undefined : (
-            <ViewSwitch view={view} onChange={changeView} editing={editing} options={allowed} />
-          )
-        }
-      />
+      <SectionTitle title={tab.label} />
       <BlockList
         blocks={blocks}
         editing={editing}
@@ -1044,15 +1017,14 @@ export default function LinkTree() {
       case "board":
         return <BoardTab {...shared} />;
       case "photo":
-        return <BlocksTab {...shared} defaultView="album" views={["album", "year"]} />;
+        return <BlocksTab {...shared} />;
       case "oekaki":
         return <Oekaki />;
       case "profile":
         /* 프로필은 글 위주라 보기 전환 없이 목록으로만 보여 줍니다. */
-        return <BlocksTab {...shared} defaultView="list" views={["list"]} hideSwitch />;
+        return <BlocksTab {...shared} />;
       default:
-        /* 직접 만든 탭(학교활동·외부활동 등)은 사진 위주라 앨범/연도별만 씁니다. */
-        return <BlocksTab {...shared} defaultView="album" views={["album", "year"]} />;
+        return <BlocksTab {...shared} />;
     }
   };
 

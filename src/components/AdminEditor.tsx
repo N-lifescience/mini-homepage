@@ -7,7 +7,7 @@ import { newId, type BoardPost, type SiteContent, type SiteContentState, type Ta
 type Section = "profile" | "tabs" | "content" | "waves";
 const sections: { id: Section; label: string; detail: string; icon: string }[] = [
   { id: "profile", label: "기본 정보", detail: "이름과 소개 문구", icon: "✎" },
-  { id: "tabs", label: "탭 관리", detail: "이름·순서·기본 보기", icon: "▤" },
+  { id: "tabs", label: "탭 관리", detail: "이름·순서", icon: "▤" },
   { id: "content", label: "글과 사진", detail: "탭에 담을 내용", icon: "▧" },
   { id: "waves", label: "파도타기", detail: "자주 가는 링크", icon: "↗" }
 ];
@@ -129,10 +129,9 @@ export default function AdminEditor({ state, images, initialTabId, onPreview, on
             {content.tabs.map((item, index) => <section className="admin-card admin-tab-card" key={item.id}>
               <div className="admin-card-head"><span className="admin-badge">{{ home: "홈", profile: "소개", board: "게시판", photo: "사진", custom: "자유", oekaki: "낙서장", guestbook: "방명록" }[item.kind]}</span><OrderTools index={index} count={content.tabs.length} onMove={delta => update({ tabs: reorder(content.tabs, index, delta) })} onRemove={item.kind === "home" ? undefined : () => removeTab(item)} /></div>
               <Field label="탭 이름" required value={item.label} onChange={label => renameTab(item.id, { label })} />
-              {["photo", "custom"].includes(item.kind) ? <label className="admin-select-field">기본 보기<select value={item.view === "year" ? "year" : "album"} onChange={event => renameTab(item.id, { view: event.target.value as "album" | "year" })}><option value="album">앨범보기</option><option value="year">연도별보기</option></select></label> : null}
               {["home", "oekaki"].includes(item.kind) ? null : <button type="button" className="admin-text-button" onClick={() => { setTabId(item.id); setSection("content"); }}>이 탭의 내용 편집 →</button>}
             </section>)}
-            <button type="button" className="admin-add" onClick={() => { const item: TabDef = { id: newId("tab"), label: "새 탭", kind: "custom", view: "album" }; update({ tabs: [...content.tabs, item] }); }}>+ 새 탭 추가</button>
+            <button type="button" className="admin-add" onClick={() => { const item: TabDef = { id: newId("tab"), label: "새 탭", kind: "custom", view: "year" }; update({ tabs: [...content.tabs, item] }); }}>+ 새 탭 추가</button>
           </> : null}
           {section === "content" ? <>
             <div className="admin-content-controls"><label className="admin-select-field">편집할 탭<select value={tab?.id ?? ""} disabled={uploading} onChange={event => { setTabId(event.target.value); setSearch(""); }}>{editableTabs.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><span className="admin-count">{tab?.kind === "board" ? `${content.boardPosts.length}개의 글` : `${(content.blocks[tab?.id ?? ""] ?? []).length}개의 내용`}</span></div>

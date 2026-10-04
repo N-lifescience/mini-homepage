@@ -41,46 +41,6 @@ export function EditableText({
   </label>;
 }
 
-/* 목록 / 앨범 / 연도별 보기를 고르는 작은 탭입니다. 싸이월드 사진첩의 보기 전환처럼요. */
-export function ViewSwitch({
-  view,
-  onChange,
-  editing,
-  options
-}: {
-  view: TabView;
-  onChange: (next: TabView) => void;
-  editing: boolean;
-  /* 이 탭에서 고를 수 있는 보기입니다. 사진 위주 탭은 목록 보기를 빼고
-     앨범/연도별만 씁니다. */
-  options?: TabView[];
-}) {
-  const labels: Record<TabView, string> = {
-    list: "목록보기",
-    album: "앨범보기",
-    year: "연도별보기"
-  };
-  const allowed = options ?? (["list", "album", "year"] as TabView[]);
-  const items = allowed.map(id => ({ id, label: labels[id] }));
-  return (
-    <div className="cy-view-switch" title={editing ? "여기서 고른 보기가 기본으로 저장됩니다" : undefined}>
-      {items.map((item, i) => (
-        <span key={item.id}>
-          {i > 0 ? <span className="cy-view-sep">|</span> : null}
-          <button
-            type="button"
-            className={`cy-view-btn${view === item.id ? " is-on" : ""}`}
-            onClick={() => onChange(item.id)}
-          >
-            {item.label}
-          </button>
-        </span>
-      ))}
-      {editing ? <span className="cy-view-note">(기본 보기로 저장됨)</span> : null}
-    </div>
-  );
-}
-
 const UNSORTED_YEAR = "기타";
 
 /* 글·사진·링크 블록 목록입니다. 새 탭, 프로필 탭, 사진첩이 모두 이걸 씁니다. */

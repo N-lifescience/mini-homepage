@@ -66,7 +66,7 @@ export type TabDef = {
   id: string;
   label: string;
   kind: TabKind;
-  /* 주인장이 정한 기본 보기. 방문자는 화면에서 잠깐 바꿔 볼 수 있습니다. */
+  /* Legacy values remain compatible; activity tabs always normalize to year view. */
   view?: TabView;
 };
 
@@ -163,7 +163,7 @@ export function defaultContent(): SiteContent {
       { id: "home", label: "홈", kind: "home" },
       { id: "profile", label: "프로필", kind: "profile" },
       { id: "board", label: staticProfile.boardLabel, kind: "board" },
-      { id: "photo", label: staticProfile.photoLabel, kind: "photo" },
+      { id: "photo", label: staticProfile.photoLabel, kind: "photo", view: "year" },
       { id: "oekaki", label: "낙서장", kind: "oekaki" }
     ],
     blocks: {
@@ -194,6 +194,7 @@ export function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
   /* Remove the legacy guestbook tab without resurrecting deleted optional tabs. */
   let tabs = Array.isArray(raw.tabs) && raw.tabs.length > 0 ? raw.tabs : base.tabs;
   tabs = tabs.filter(t => t.kind !== "guestbook");
+  tabs = tabs.map(t => t.kind === "photo" || t.kind === "custom" ? { ...t, view: "year" } : t);
   if (!tabs.some(t => t.kind === "home")) tabs = [base.tabs[0], ...tabs];
   const fixed = base.waveLinks[0];
   const savedWaves = Array.isArray(raw.waveLinks) ? raw.waveLinks : base.waveLinks;
