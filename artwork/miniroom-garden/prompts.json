@@ -23,5 +23,16 @@
     "referenced_image_paths": [
       "/Volumes/T7/Projects/링크트리/public/assets/profile-garden.webp"
     ]
+  },
+  {
+    "key": "room_background_calm_v3",
+    "tool": "Codex built-in image_gen",
+    "transparent_background": false,
+    "prompt": "Use case: precise-object-edit.\nAsset type: EMPTY background layer for an interactive isometric miniroom; landscape 16:9.\nInput image 1: edit target, the existing empty room background. Preserve the camera, geometry, framing, and cozy hand-painted cartoon style.\nPrimary request: simplify the very busy leafy biology room into a calm, airy biology studio with warm ivory walls, a pale honey wood floor, and restrained sage accents.\nChange only the decorative background: REMOVE all hanging vines, leafy branches, daisies, leafy wallpaper patterns, foliage shadows, plants at the wall bases, and blurred foreground leaves/flowers. Fill with quiet plain warm ivory walls and the continuous existing pale wood floor. No patterned wallpaper. No plant border anywhere.\nKeep the left round wooden window in its EXACT current place and size, but remove leaves, branches and flowers wrapping around or crossing its frame. Use a simple unobstructed thin wood frame with restrained wooden dividers. Through it show only a very calm pale blue sky and softly distant low sage landscape, no close-up foliage or tiny details.\nKeep the right framed DNA illustration in its EXACT current position, dimensions and perspective. Simplify to one understated sage DNA helix on plain cream paper with no surrounding leaves.\nLighting: soft daylight, low contrast, quiet broad light on the floor, no mottled foliage shadow.\nCRITICAL GEOMETRY INVARIANTS: two walls meet at x=50%; floor apex at x=50%, y=40%; wall-to-floor junction slopes to x=0%, y=75% and x=100%, y=75% as seen in this edit target. Keep all existing architectural boundary lines, skirting board positions, plank perspective and framing exactly as the supplied target. Do not crop or zoom.\nThis image is ONLY the empty backdrop; independent interactive furniture and character sprites will be layered over it later. Entire floor must remain completely empty.\nAvoid: all characters, creatures, furniture, desks, shelves, potted plants, props, laboratory equipment, extra wall objects, text, UI, watermarks, dense green, flowers and ornamented borders. Opaque background.",
+    "referenced_image_paths": [
+      "/Volumes/T7/Projects/링크트리/public/assets/miniroom-garden/background.webp"
+    ],
+    "source": "artwork/miniroom-garden/background-calm.png",
+    "final": "public/assets/miniroom-garden/background-calm.webp"
   }
 ]

@@ -29,13 +29,21 @@ Codex 내장 `imagegen` 도구로 빈 배경과 투명 소품/캐릭터 atlas를
 
 | 저장 경로 | 구성 |
 | --- | --- |
-| `public/assets/miniroom-garden/background.webp` | 가구·캐릭터가 없는 정원 연구실 배경 |
+| `public/assets/miniroom-garden/background-calm.webp` | 잎 장식을 정리한 현재 연구실 배경 |
+| `public/assets/miniroom-garden/background.webp` | 이전 정원 연구실 배경, 편집 참조로 보관 |
 | `public/assets/miniroom-garden/furniture/` | 실험대, 현미경 책상, 의자, 학습 보드, 칠판, 표본 병, 책장, 화분 |
 | `public/assets/miniroom-garden/character/` | standing, waving, floating, walking, observing, mascot 여섯 모드 |
 | `artwork/miniroom-garden/props-atlas.png` | 소품 생성 원본 |
 | `artwork/miniroom-garden/character-atlas.png` | 캐릭터 생성 원본 |
+| `artwork/miniroom-garden/background-calm.png` | 차분한 연구실 배경 편집 원본 |
 | `artwork/miniroom-garden/prompts.json` | 도구 종류·참조 파일·최종 프롬프트 세트 |
 
 원래 일곱 소품 ID와 여섯 모드 ID를 그대로 사용했습니다. 추가 화분 애셋은 예비 소품으로 보관합니다. 배치 좌표는 `src/config/furniture.ts`에 있으며 기존 연구실의 실험대·책상·의자·보드·칠판·표본·수납 구성을 따릅니다. 캐릭터와 소품의 y 좌표로 가림 순서를 정했습니다. 모바일 이동 버튼은 기존 방향키와 같은 이동 함수를 사용합니다. 관리 화면(`?admin=1`)의 미니룸 메뉴에서 소품과 바다토끼를 옮깁니다. 바다토끼를 놓은 곳이 방문자의 시작 위치가 돼요. 수정한 배치는 변경사항 저장을 누르면 공개돼요. 저장한 배치가 없으면 `src/config/furniture.ts`와 기본 시작 위치를 사용합니다. 로그인하지 않은 `?edit=1`은 배치 미리보기만 제공합니다.
 
 검증: 실제 브라우저에서 여섯 모드 순환, 방향키와 모바일 버튼 이동, 바닥 경계 제한, 소품 접근 말풍선, 드래그·좌우 반전 확인. 320/375/768/1024/1440px 화면과 가로 넘침 확인. 한국어 문구와 이미지 대체 문구는 humanize-korean light 게이트를 각각 통과했습니다(변경률 0%, B, 자체검증 6/6, exit 0). 빌드·테스트 검증 결과는 세션 체크포인트에 기록합니다.
+
+## 미니룸 잎 장식 정리
+
+벽을 덮던 덩굴, 잎 무늬, 꽃 테두리와 앞쪽의 흐린 잎을 제거했습니다. 크림색 벽과 밝은 나무 바닥에 둥근 창문, 작은 DNA 액자만 남겼습니다. 창밖은 하늘과 멀리 보이는 풍경으로 단순하게 정리했습니다.
+
+Codex 내장 `imagegen` 도구로 기존 빈 배경만 편집했습니다. 방의 시점, 벽과 바닥 경계, 창문과 액자 위치를 유지했으며 소품 이미지, 배치 좌표, 바다토끼 시작 위치와 이동·편집 기능은 변경하지 않았습니다. 제작 프롬프트는 `artwork/miniroom-garden/prompts.json`의 `room_background_calm_v3`에 있습니다. 이미지 대체 문구는 humanize-korean light 검증을 통과했습니다(변경률 0%, B, 자체검증 6/6, exit 0).
