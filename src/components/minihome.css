@@ -7,7 +7,7 @@
   --garden-line: #c5d6b7;
   --garden-mint: #e7efda;
   color: var(--garden-ink);
-  background-color: #e3efd6;
+  background-color: #c5cfbd;
   background-position: center;
   padding: 48px 110px 48px 40px;
   word-break: keep-all;
@@ -21,7 +21,20 @@
 .cy-root :is(h1, h2, h3, .cy-title, .lt-intro-title) { text-wrap: balance; }
 .cy-root :is(p, .cy-intro-text, .title-sub, .cy-block-text) { text-wrap: pretty; }
 .cy-root .cy-background-pattern {
-  background: linear-gradient(180deg, #f6fae820, #f6fae800 55%, #436b3415);
+  position: fixed;
+  overflow: hidden;
+  background: #c5cfbd;
+  z-index: 0;
+}
+.cy-root .cy-background-image {
+  position: absolute;
+  inset: -24px;
+  width: calc(100% + 48px);
+  height: calc(100% + 48px);
+  max-width: none;
+  object-fit: cover;
+  filter: blur(10px) saturate(.35) brightness(.82);
+  opacity: .6;
 }
 .cy-root .cy-book-wrapper { width: min(1120px, 100%); height: 840px; }
 .cy-root .cy-book-outer {
@@ -144,6 +157,8 @@
 .cy-root .cy-miniroom-furniture-wrap.is-editable:active { cursor: grabbing; }
 .cy-root .cy-character-bubble.is-positioned {
   position: absolute;
+  bottom: auto;
+  height: auto;
   width: 180px;
   max-width: calc(100% - 16px);
   margin: 0;
@@ -161,8 +176,10 @@
   z-index: 1100;
 }
 .cy-root .cy-character-bubble.is-hint { background: #ecf3d7; }
-.cy-root .cy-character-bubble::after { border-top-color: #fffef6; }
+.cy-root .cy-character-bubble::after { left: var(--bubble-tail, 50%); border-top-color: #fffef6; }
 .cy-root .cy-character-bubble.is-hint::after { border-top-color: #ecf3d7; }
+.cy-root .cy-character-bubble[data-placement="below"]::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #fffef6; }
+.cy-root .cy-character-bubble.is-hint[data-placement="below"]::after { border-bottom-color: #ecf3d7; }
 .cy-root :is(.cy-miniroom-hint, .cy-miniroom-edit-toggle, .cy-edit-tag, .cy-miniroom-character-tag) { z-index: 1200; background: #fffef6ed; border-color: #b7cea3; color: var(--garden-ink); }
 .cy-root .cy-miniroom-hint { max-width: calc(100% - 24px); white-space: normal; text-align: center; font-size: 12px; }
 .cy-root .cy-miniroom-edit-toggle { min-height: 44px; font-size: 13px; }
@@ -307,5 +324,5 @@
 @media (max-width: 700px), (pointer: coarse) {
   .cy-root .cy-room-controls { display: grid; }
   .cy-root .cy-miniroom-hint { display: none; }
-  .cy-root .cy-character-bubble.is-positioned { top: 8px !important; left: 50% !important; font-size: 13px; padding: 6px 8px; }
+  .cy-root .cy-character-bubble.is-positioned { font-size: 13px; padding: 6px 8px; }
 }

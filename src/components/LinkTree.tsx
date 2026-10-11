@@ -790,9 +790,10 @@ export default function LinkTree() {
   return (
     <div
       className={`cy-root${adminMode ? " has-admin-bar" : ""}`}
-      style={{ backgroundImage: `url(${asset("/assets/background-garden.webp")})` }}
     >
-      <div className="cy-background-pattern" aria-hidden="true"></div>
+      <div className="cy-background-pattern" aria-hidden="true">
+        <img className="cy-background-image" src={asset("/assets/background-garden.webp")} alt="" />
+      </div>
       {adminMode ? <div className="admin-bar">
         <span className="admin-bar-title">미니홈피 관리</span>
         <span className="admin-bar-status" role="status">{isOwner ? site.saveStatus === "saving" ? "저장 중…" : site.dirty ? "미리보기 · 아직 저장하지 않았어요" : "저장된 최신 내용" : "주인장 계정으로 로그인해 주세요"}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { asset } from "@/lib/asset";
 import { profile } from "@/config/linktree";
 import { characterModes } from "@/config/character";
@@ -16,6 +16,8 @@ const FLOOR_EDGE_MARGIN = 5;
 const BUBBLE_DURATION_MS = 2600;
 /* 캐릭터와 가구 사이 이 거리(%) 안에 들어오면 상호작용 문구를 띄웁니다. */
 const NEAR_DISTANCE = 14;
+const BUBBLE_EDGE = 8;
+const BUBBLE_GAP = 10;
 
 function clampToFloor(x: number, y: number, edgeMargin = FLOOR_EDGE_MARGIN) {
   const clampedY = Math.min(FLOOR_MAX_Y, Math.max(FLOOR_MIN_Y, y));
@@ -74,6 +76,10 @@ export default function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
   }, []);
   const stageRef = useRef<HTMLDivElement>(null);
   const characterRef = useRef<HTMLButtonElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [bubbleSize, setBubbleSize] = useState<{
+    stageWidth: number; stageHeight: number; characterHeight: number; width: number; height: number;
+  } | null>(null);
 
   useEffect(() => {
     // Cache all poses so the existing click-to-cycle interaction does not flash.
@@ -181,6 +187,45 @@ export default function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
 
   const displayBubble = bubble ?? nearbyItem?.hint ?? null;
 
+  // Measure the rendered lines so the balloon fits at every room size and zoom level.
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const character = characterRef.current;
+    const balloon = bubbleRef.current;
+    if (!displayBubble || !stage || !character || !balloon) return;
+    function measure() {
+      const next = {
+        stageWidth: stage!.clientWidth, stageHeight: stage!.clientHeight,
+        characterHeight: character!.offsetHeight, width: balloon!.offsetWidth, height: balloon!.offsetHeight
+      };
+      setBubbleSize(prev => prev && Object.keys(next).every(key => prev[key as keyof typeof next] === next[key as keyof typeof next]) ? prev : next);
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    [stage, character, balloon].forEach(element => observer.observe(element));
+    return () => observer.disconnect();
+  }, [displayBubble, modeIndex]);
+
+  let bubbleStyle: CSSProperties = { left: "50%", top: BUBBLE_EDGE, visibility: "hidden" };
+  let bubblePlacement = "above";
+  if (bubbleSize) {
+    const anchorX = pos.x / 100 * bubbleSize.stageWidth;
+    const halfWidth = bubbleSize.width / 2;
+    const left = Math.max(BUBBLE_EDGE + halfWidth, Math.min(bubbleSize.stageWidth - BUBBLE_EDGE - halfWidth, anchorX));
+    const feetY = pos.y / 100 * bubbleSize.stageHeight;
+    const aboveTop = feetY - bubbleSize.characterHeight - BUBBLE_GAP - bubbleSize.height;
+    // At the back wall, put the balloon below the character rather than over its face.
+    bubblePlacement = aboveTop < BUBBLE_EDGE ? "below" : "above";
+    const top = Math.max(BUBBLE_EDGE, Math.min(
+      bubbleSize.stageHeight - bubbleSize.height - BUBBLE_EDGE - 5,
+      bubblePlacement === "below" ? feetY + BUBBLE_GAP : aboveTop
+    ));
+    bubbleStyle = {
+      left, top,
+      "--bubble-tail": `${Math.max(12, Math.min(bubbleSize.width - 12, anchorX - left + halfWidth))}px`
+    } as CSSProperties;
+  }
+
   function cycleMode() {
     const nextIndex = (modeIndex + 1) % characterModes.length;
     const nextMode = characterModes[nextIndex];
@@ -256,7 +301,7 @@ export default function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
         </button>
       ) : null}
 
-      {hovering && !editMode ? (
+      {hovering && !editMode && !displayBubble ? (
         <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
       ) : null}
 
@@ -278,12 +323,11 @@ export default function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
       {displayBubble ? (
         <div
           className={`cy-character-bubble is-positioned${!bubble ? " is-hint" : ""}`}
+          ref={bubbleRef}
+          data-placement={bubblePlacement}
           role="status"
           aria-live="polite"
-          style={{
-            left: `clamp(90px, ${pos.x}%, calc(100% - 90px))`,
-            top: `clamp(8px, calc(${pos.y}% - clamp(44px, 24%, 110px) - 70px), calc(100% - 70px))`
-          }}
+          style={bubbleStyle}
         >
           {displayBubble}
         </div>
@@ -305,4 +349,3 @@ export default function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
     </div>
   );
 }
-
