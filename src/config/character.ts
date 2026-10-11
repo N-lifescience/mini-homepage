@@ -11,7 +11,7 @@ export const characterModes: CharacterMode[] = [
   {
     id: "standing",
     label: "기본",
-    src: "/assets/character/n-standing.png",
+    src: "/assets/miniroom-garden/character/standing.webp",
     lines: [
       "안녕하세요! 저는 N이에요.",
       "오늘도 생명과학 탐구 완료!",
@@ -22,7 +22,7 @@ export const characterModes: CharacterMode[] = [
   {
     id: "waving",
     label: "인사",
-    src: "/assets/character/n-waving.png",
+    src: "/assets/miniroom-garden/character/waving.webp",
     lines: [
       "반가워요! 잘 왔어요 👋",
       "방문해줘서 고마워요!",
@@ -33,7 +33,7 @@ export const characterModes: CharacterMode[] = [
   {
     id: "floating1",
     label: "부유",
-    src: "/assets/character/n-floating1.png",
+    src: "/assets/miniroom-garden/character/floating.webp",
     lines: [
       "둥실~ 잎사귀 충전 중...",
       "광합성 타임 🌿",
@@ -44,7 +44,7 @@ export const characterModes: CharacterMode[] = [
   {
     id: "floating2",
     label: "이동",
-    src: "/assets/character/n-floating2.png",
+    src: "/assets/miniroom-garden/character/walking.webp",
     lines: [
       "실험 결과 분석하러 갑니다!",
       "다음 발견을 향해 출발!",
@@ -55,20 +55,20 @@ export const characterModes: CharacterMode[] = [
   {
     id: "action1",
     label: "분석",
-    src: "/assets/character/n-action1.png",
+    src: "/assets/miniroom-garden/character/observing.webp",
     lines: [
-      "새로운 DNA 데이터 로딩 중...",
-      "홀로그램 분석 완료!",
-      "염기서열을 해독하고 있어요.",
-      "실험 변수 계산 중... 거의 다 됐어요!"
+      "돋보기로 잎맥을 살펴보고 있어요.",
+      "작은 잎에도 발견할 게 많아요!",
+      "잎의 모양을 자세히 관찰해요.",
+      "오늘 찾은 식물을 기록해둘게요."
     ]
   },
   {
     id: "mascot",
     label: "마스코트",
-    src: "/assets/character/n-mascot.png",
+    src: "/assets/miniroom-garden/character/mascot.webp",
     lines: [
-      "N-LAB 로고 모드!",
+      "새싹이 무럭무럭 자라길!",
       "생명과학의 상징이 될게요.",
       "N을 기억해주세요 💚",
       "이 랩의 마스코트입니다!"

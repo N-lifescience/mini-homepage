@@ -7,8 +7,8 @@ export const profile = {
   catalogDescription: "N의 상상을 더한 N가지 생명과학 이야기",
   /* 왼쪽 프로필 사진입니다. public/assets/ 안에 파일을 넣고 경로를 적으세요. */
   photo: { src: "/assets/profile-garden.webp", alt: "흰 가운을 입고 인사하는 N 캐릭터" },
-  /* 홈 탭 위쪽 미니룸 이미지입니다. public/assets/ 안에 파일을 넣고 경로를 적으세요. */
-  miniroom: { src: "/assets/miniroom-garden.webp", alt: "숲속에서 식물과 생명과학을 탐구하는 N과 친구들" },
+  /* 미니룸의 빈 배경입니다. 소품과 캐릭터는 별도 애셋으로 배치됩니다. */
+  miniroom: { src: "/assets/miniroom-garden/background.webp", alt: "덩굴과 정원 창문이 있는 빈 생명과학 연구실" },
   /* 아래는 탭 이름표입니다. 나만의 이름으로 바꿔도 되고, 안 바꾸면 기본값 그대로 나옵니다. */
   storyLabel: "연재물",
   boardLabel: "게시판",

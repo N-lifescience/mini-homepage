@@ -30,6 +30,7 @@ import {
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
 import "./minihome.css";
+import MiniRoom from "@/components/MiniRoom";
 import {
   newId,
   useImages,
@@ -122,57 +123,6 @@ function SectionTitle({ title, sub }: { title: React.ReactNode; sub?: React.Reac
       {title}
       {sub ? <span className="cy-sub-text">{sub}</span> : null}
     </div>
-  );
-}
-
-const gardenGreetings = [
-  "반가워요! 잘 왔어요.",
-  "방문해 줘서 고마워요!",
-  "오늘은 어떤 생명과학 이야기가 궁금한가요?",
-  "다음에 또 놀러 와요!"
-];
-
-function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
-  const [greetingIndex, setGreetingIndex] = useState(-1);
-
-  useEffect(() => {
-    if (!introSkipped) return;
-    const timer = window.setTimeout(() => setGreetingIndex(0), 600);
-    return () => window.clearTimeout(timer);
-  }, [introSkipped]);
-
-  useEffect(() => {
-    if (greetingIndex < 0) return;
-    const timer = window.setTimeout(() => setGreetingIndex(-1), 5000);
-    return () => window.clearTimeout(timer);
-  }, [greetingIndex]);
-
-  return (
-    <figure className="cy-garden-room">
-      <div className="cy-miniroom-stage">
-        <img
-          className="cy-miniroom-bg"
-          src={asset(profile.miniroom.src)}
-          alt={profile.miniroom.alt}
-          width={1145}
-          height={1374}
-          fetchPriority="high"
-        />
-        <div className="cy-garden-bubble" role="status" aria-live="polite">
-          {greetingIndex >= 0 ? <span>{gardenGreetings[greetingIndex]}</span> : null}
-        </div>
-      </div>
-      <figcaption className="cy-garden-caption">
-        <span>일상의 궁금증을 생명과학으로</span>
-        <button
-          type="button"
-          className="cy-garden-greet"
-          onClick={() => setGreetingIndex(index => (index + 1) % gardenGreetings.length)}
-        >
-          N에게 인사하기 <span aria-hidden="true">♡</span>
-        </button>
-      </figcaption>
-    </figure>
   );
 }
 

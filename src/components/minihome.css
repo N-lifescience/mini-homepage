@@ -133,27 +133,53 @@
 }
 .cy-root .cy-sub-text { font-size: 13px; line-height: 1.5; color: var(--garden-muted); margin: 0; }
 .cy-root .cy-miniroom-inner { border-color: #c9d9b8; border-radius: 12px; background: #e8f2dc; }
-.cy-root .cy-garden-room { width: 100%; margin: 0; }
-.cy-root .cy-miniroom-stage { aspect-ratio: 8 / 5; width: 100%; }
-.cy-root .cy-miniroom-stage .cy-miniroom-bg { object-position: center 35%; }
-.cy-root .cy-garden-bubble { position: absolute; left: 7%; right: 7%; top: 5%; display: flex; justify-content: center; pointer-events: none; }
-.cy-root .cy-garden-bubble span {
-  max-width: 100%;
-  padding: 10px 16px;
-  border: 1px solid #c1d3ac;
-  border-radius: 16px 16px 16px 4px;
-  background: #fffef6f2;
+/* The scene remains interactive: the background, props and mascot are independent layers. */
+.cy-root .cy-miniroom-inner { display: block; }
+.cy-root .cy-interactive-room { width: 100%; }
+.cy-root .cy-miniroom-stage { aspect-ratio: 1376 / 768; width: 100%; isolation: isolate; }
+.cy-root .cy-miniroom-stage .cy-miniroom-bg { object-position: center; }
+.cy-root .cy-miniroom-stage :is(.cy-miniroom-furniture, .cy-miniroom-character img) { filter: drop-shadow(0 3px 2px #4c67341f); }
+.cy-root .cy-miniroom-stage .cy-miniroom-character { height: clamp(44px, 24%, 110px); min-width: 44px; min-height: 44px; max-height: 110px; }
+.cy-root .cy-miniroom-furniture-wrap.is-editable { touch-action: none; }
+.cy-root .cy-miniroom-furniture-wrap.is-editable:active { cursor: grabbing; }
+.cy-root .cy-character-bubble.is-positioned {
+  position: absolute;
+  width: 180px;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 8px 10px;
+  transform: translateX(-50%);
+  background: #fffef6;
+  border: 1px solid #b7cea3;
   color: var(--garden-ink);
-  box-shadow: 0 4px 16px #42543912;
+  box-shadow: 0 3px 12px #3b562a1c;
   font-size: 14px;
-  font-weight: 600;
   line-height: 1.5;
+  white-space: normal;
   text-align: center;
+  pointer-events: none;
+  z-index: 1100;
 }
-.cy-root .cy-garden-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 10px 14px; background: #f0f5e4; border-top: 1px solid #d5e2c2; color: #506744; font-size: 13px; line-height: 1.6; }
-.cy-root .cy-garden-greet { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 7px 12px; border: 1px solid #b5c9a3; border-radius: 999px; background: #fffef6; color: var(--garden-green); font-size: 13px; font-weight: 700; cursor: pointer; }
-.cy-root .cy-garden-greet:hover { background: #dfeccf; }
-.cy-root .cy-garden-greet span { color: #a0644c; font-size: 17px; }
+.cy-root .cy-character-bubble.is-hint { background: #ecf3d7; }
+.cy-root .cy-character-bubble::after { border-top-color: #fffef6; }
+.cy-root .cy-character-bubble.is-hint::after { border-top-color: #ecf3d7; }
+.cy-root :is(.cy-miniroom-hint, .cy-miniroom-edit-toggle, .cy-edit-tag, .cy-miniroom-character-tag) { z-index: 1200; background: #fffef6ed; border-color: #b7cea3; color: var(--garden-ink); }
+.cy-root .cy-miniroom-hint { max-width: calc(100% - 24px); white-space: normal; text-align: center; font-size: 12px; }
+.cy-root .cy-miniroom-edit-toggle { min-height: 44px; font-size: 13px; }
+.cy-root .cy-edit-tag { font-size: 11px; }
+.cy-root .cy-edit-tag button { color: var(--garden-green); background: #e3edcf; border-color: #b7cea3; min-width: 44px; min-height: 44px; }
+.cy-root .cy-miniroom-character-tag { font-size: 11px; }
+.cy-root .cy-miniroom-character img { margin-inline: auto; }
+.cy-root .cy-miniroom-character:focus-visible img { outline-color: #426b3e; }
+.cy-root .cy-room-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-top: 1px solid #d5e2c2; background: #f0f5e4; font-size: 14px; line-height: 1.6; color: #506744; }
+.cy-root .cy-room-toolbar > span { flex: 1 1 140px; }
+.cy-root .cy-room-controls { display: none; grid-template-columns: repeat(3,44px); gap: 3px; }
+.cy-root .cy-room-controls button { width: 44px; height: 44px; border: 1px solid #b7cea3; border-radius: 7px; background: #fffef6; color: #426b3e; font-size: 22px; font-weight: 700; cursor: pointer; }
+.cy-root .cy-room-controls button:first-child { grid-column: 2; }
+.cy-root .cy-room-controls button:nth-child(2) { grid-column: 1; grid-row: 2; }
+.cy-root .cy-room-controls button:nth-child(3) { grid-column: 2; grid-row: 2; }
+.cy-root .cy-room-controls button:nth-child(4) { grid-column: 3; grid-row: 2; }
+.cy-root .cy-room-controls button:hover, .cy-root .cy-room-controls button:active { background: #dfeccf; }
 .cy-root .cy-tabs { right: -83px; top: 45px; gap: 8px; }
 .cy-root .cy-tab-btn,
 .cy-root .cy-tab-btn:hover,
@@ -212,9 +238,6 @@
   .cy-root .cy-right-panel { grid-column: 2; grid-row: 2; height: auto; padding: 18px; }
   .cy-root .cy-right-header { flex-wrap: wrap; gap: 8px; }
   .cy-root .cy-right-content { padding: 16px; overflow: visible; flex: 1; }
-  .cy-root .cy-miniroom-stage { aspect-ratio: 1; }
-  .cy-root .cy-miniroom-stage .cy-miniroom-bg { object-position: center 46%; }
-  .cy-root .cy-garden-caption { justify-content: center; text-align: center; }
 }
 @media (max-width: 700px) {
   .cy-root.cy-root { padding: 16px 12px 32px; background-attachment: scroll; }
@@ -243,10 +266,6 @@
   .cy-root .cy-url { font-size: 11px; }
   .cy-root .cy-right-content { padding: 14px; gap: 24px; }
   .cy-root .cy-section-title { font-size: 16px; }
-  .cy-root .cy-miniroom-stage { aspect-ratio: 5 / 6; }
-  .cy-root .cy-garden-caption { padding: 12px 10px; gap: 10px; }
-  .cy-root .cy-garden-caption > span { font-size: 13px; }
-  .cy-root .cy-garden-greet { min-height: 44px; font-size: 14px; }
   .cy-root .cy-board-head { flex-wrap: wrap; gap: 6px; }
   .cy-root .cy-board-title { flex-basis: 100%; }
   .cy-root .cy-block-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -267,8 +286,6 @@
   .cy-root .cy-right-header { flex-direction: column; gap: 6px; }
   .cy-root .cy-url { text-align: left; }
   .cy-root .cy-right-content { padding: 12px; }
-  .cy-root .cy-garden-bubble { left: 5%; right: 5%; }
-  .cy-root .cy-garden-bubble span { font-size: 13px; padding: 8px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cy-root *, .cy-root *::before, .cy-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -286,3 +303,9 @@
 .cy-root .cy-oe-help { font-size: 14px; line-height: 1.8; background: #f1f6e8; border-color: #d5dfc6; }
 .cy-root .cy-oe-author, .cy-root .cy-oe-reply-author { font-size: 14px; color: var(--garden-green); }
 .cy-root .cy-oe-date { font-size: 12px; color: var(--garden-muted); }
+
+@media (max-width: 700px), (pointer: coarse) {
+  .cy-root .cy-room-controls { display: grid; }
+  .cy-root .cy-miniroom-hint { display: none; }
+  .cy-root .cy-character-bubble.is-positioned { top: 8px !important; left: 50% !important; font-size: 13px; padding: 6px 8px; }
+}
