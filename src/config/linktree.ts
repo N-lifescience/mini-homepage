@@ -6,9 +6,9 @@ export const profile = {
   catalogTitle: "N의 생명과학",
   catalogDescription: "N의 상상을 더한 N가지 생명과학 이야기",
   /* 왼쪽 프로필 사진입니다. public/assets/ 안에 파일을 넣고 경로를 적으세요. */
-  photo: { src: "/assets/profile-n.jpg", alt: "N의 생명과학 프로필 사진" },
+  photo: { src: "/assets/profile-garden.webp", alt: "흰 가운을 입고 인사하는 N 캐릭터" },
   /* 홈 탭 위쪽 미니룸 이미지입니다. public/assets/ 안에 파일을 넣고 경로를 적으세요. */
-  miniroom: { src: "/assets/miniroom-bg-cyberpunk.jpg", alt: "사이버펑크 랩 미니룸" },
+  miniroom: { src: "/assets/miniroom-garden.webp", alt: "숲속에서 식물과 생명과학을 탐구하는 N과 친구들" },
   /* 아래는 탭 이름표입니다. 나만의 이름으로 바꿔도 되고, 안 바꾸면 기본값 그대로 나옵니다. */
   storyLabel: "연재물",
   boardLabel: "게시판",

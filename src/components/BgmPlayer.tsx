@@ -35,6 +35,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
+  const playerReadyRef = useRef(false);
   /* 플레이어가 준비되기 전에 인트로 버튼을 누른 경우를 기억해 둡니다. */
   const wantsPlayRef = useRef(false);
   const blockTimerRef = useRef<number | null>(null);
@@ -62,6 +63,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
           },
           events: {
             onReady: () => {
+              playerReadyRef.current = true;
               player?.setVolume(DEFAULT_VOLUME);
               if (wantsPlayRef.current) player?.playVideo();
             },
@@ -98,6 +100,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
       if (blockTimerRef.current !== null) window.clearInterval(blockTimerRef.current);
       player?.destroy();
       playerRef.current = null;
+      playerReadyRef.current = false;
     };
   }, []);
 
@@ -108,7 +111,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
 
     const timer = window.setInterval(() => {
       const player = playerRef.current;
-      if (!player) return;
+      if (!player || !playerReadyRef.current) return;
 
       const at = player.getCurrentTime();
       let found = -1;
@@ -129,7 +132,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
     let tries = 0;
     blockTimerRef.current = window.setInterval(() => {
       tries += 1;
-      if (playerRef.current?.getPlayerState() === PLAYER_STATE.playing) {
+      if (playerReadyRef.current && playerRef.current?.getPlayerState() === PLAYER_STATE.playing) {
         if (blockTimerRef.current !== null) window.clearInterval(blockTimerRef.current);
         blockTimerRef.current = null;
         return;
@@ -144,7 +147,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
 
   const start = useCallback(() => {
     wantsPlayRef.current = true;
-    playerRef.current?.playVideo();
+    if (playerReadyRef.current) playerRef.current?.playVideo();
     watchForBlock();
   }, [watchForBlock]);
 
@@ -152,7 +155,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
 
   const toggle = () => {
     const player = playerRef.current;
-    if (!player) {
+    if (!player || !playerReadyRef.current) {
       /* 아직 플레이어가 준비되지 않았습니다. 준비되는 대로 재생하도록 기억해 둡니다. */
       wantsPlayRef.current = true;
       setBlocked(false);
@@ -176,7 +179,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
     setBlocked(false);
 
     const player = playerRef.current;
-    if (!player) return;
+    if (!player || !playerReadyRef.current) return;
 
     if (track.videoId === loadedVideoRef.current) {
       /* 같은 영상 안의 곡이면 다시 불러오지 않고 그 지점으로 건너뜁니다. */
@@ -192,7 +195,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
 
   const toggleMute = () => {
     const player = playerRef.current;
-    if (!player) return;
+    if (!player || !playerReadyRef.current) return;
     if (muted) {
       player.unMute();
       setMuted(false);
@@ -205,7 +208,7 @@ export default function BgmPlayer({ ref }: { ref?: React.Ref<BgmHandle> }) {
   const changeVolume = (next: number) => {
     setVolume(next);
     const player = playerRef.current;
-    if (!player) return;
+    if (!player || !playerReadyRef.current) return;
     player.setVolume(next);
     if (next > 0 && muted) {
       player.unMute();

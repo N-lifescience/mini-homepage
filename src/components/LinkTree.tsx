@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Spiral, type SpiralProps } from "@paper-design/shaders-react";
 import { asset } from "@/lib/asset";
 import BgmPlayer, { type BgmHandle } from "@/components/BgmPlayer";
@@ -29,8 +29,7 @@ import {
   profile
 } from "@/config/linktree";
 import { theme } from "@/config/theme";
-import { characterModes } from "@/config/character";
-import { furnitureItems } from "@/config/furniture";
+import "./minihome.css";
 import {
   newId,
   useImages,
@@ -104,7 +103,7 @@ function IntroOverlay({
         <p className="lt-intro-copy">{description}</p>
         <div className="lt-intro-actions">
           <button type="button" className="lt-intro-cta" onClick={onBrowse}>
-            미니홈피
+            모든 활동 구경하기
             <ChevronDown size={18} />
           </button>
           <a className="lt-intro-cta lt-intro-showroom" href={asset("/showroom/")}>
@@ -126,263 +125,54 @@ function SectionTitle({ title, sub }: { title: React.ReactNode; sub?: React.Reac
   );
 }
 
-/* 방향키로 움직이고 클릭하면 모드(포즈+멘트)가 바뀌는 미니룸 캐릭터입니다.
-   배경(miniroom-bg-cyberpunk.jpg)의 바닥은 위쪽 한 점(꼭짓점)에서 벌어지는
-   삼각형이라, 벽으로 못 나가게 y값에 따라 x 이동 범위를 좁혀서 바닥 모양대로 막는다. */
-const CHARACTER_STEP = 3;
-const FLOOR_APEX_Y = 40; // 바닥이 시작되는 꼭짓점의 세로 위치(%)
-const FLOOR_MIN_Y = 43;
-const FLOOR_MAX_Y = 88;
-const FLOOR_SLOPE = 1.07; // 꼭짓점에서 아래로 1% 내려갈 때 바닥이 좌우로 넓어지는 폭(%)
-const FLOOR_EDGE_MARGIN = 5;
-const BUBBLE_DURATION_MS = 2600;
-/* 캐릭터와 가구 사이 이 거리(%) 안에 들어오면 상호작용 문구를 띄웁니다. */
-const NEAR_DISTANCE = 14;
+const gardenGreetings = [
+  "반가워요! 잘 왔어요.",
+  "방문해 줘서 고마워요!",
+  "오늘은 어떤 생명과학 이야기가 궁금한가요?",
+  "다음에 또 놀러 와요!"
+];
 
-function clampToFloor(x: number, y: number) {
-  const clampedY = Math.min(FLOOR_MAX_Y, Math.max(FLOOR_MIN_Y, y));
-  const halfWidth = FLOOR_SLOPE * (clampedY - FLOOR_APEX_Y);
-  const minX = Math.max(FLOOR_EDGE_MARGIN, 50 - halfWidth);
-  const maxX = Math.min(100 - FLOOR_EDGE_MARGIN, 50 + halfWidth);
-  return { x: Math.min(maxX, Math.max(minX, x)), y: clampedY };
-}
+function MiniRoom({ introSkipped }: { introSkipped: boolean }) {
+  const [greetingIndex, setGreetingIndex] = useState(-1);
 
-type FurnitureLayout = Record<string, { x: number; y: number; flip: boolean }>;
-
-function initialFurnitureLayout(): FurnitureLayout {
-  return Object.fromEntries(
-    furnitureItems.map(item => [item.id, { x: item.x, y: item.y, flip: !!item.flip }])
-  );
-}
-
-function MiniRoomCharacter({ introSkipped }: { introSkipped: boolean }) {
-  const [pos, setPos] = useState({ x: 65, y: 88 });
-  const [facing, setFacing] = useState<"left" | "right">("right");
-  const [modeIndex, setModeIndex] = useState(0);
-  const [bubble, setBubble] = useState<string | null>(null);
-  const [hovering, setHovering] = useState(false);
-  const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /* 인트로를 막 지나서 미니홈피에 처음 들어온 순간에만 인사 멘트를 자동으로 띄웁니다.
-     이 멘트는 타이머로 사라지지 않고, 캐릭터를 클릭해서 모드를 바꾸기 전까지 계속 떠 있습니다. */
-  const wasIntroSkipped = useRef(introSkipped);
   useEffect(() => {
-    if (introSkipped && !wasIntroSkipped.current) {
-      const waveIndex = characterModes.findIndex(m => m.id === "waving");
-      if (waveIndex !== -1) {
-        const timer = setTimeout(() => {
-          setModeIndex(waveIndex);
-          setBubble(characterModes[waveIndex].lines[0]);
-        }, 400);
-        wasIntroSkipped.current = introSkipped;
-        return () => clearTimeout(timer);
-      }
-    }
-    wasIntroSkipped.current = introSkipped;
+    if (!introSkipped) return;
+    const timer = window.setTimeout(() => setGreetingIndex(0), 600);
+    return () => window.clearTimeout(timer);
   }, [introSkipped]);
 
-  /* 편집모드: 가구를 드래그로 옮기고 좌우 반전을 미리 볼 수 있습니다.
-     여기서 옮긴 값은 화면에서만 바뀌고 저장되지 않으니, 마음에 드는 좌표를
-     캡쳐해서 알려주시면 src/config/furniture.ts 에 직접 반영합니다.
-     실수로 방문자가 건드리지 않도록, 주소 끝에 ?edit=1 을 붙였을 때만 켜는
-     버튼이 보입니다 (배포본에는 항상 있지만 평소엔 숨어 있습니다). */
-  const [editMode, setEditMode] = useState(false);
-  const [canEdit, setCanEdit] = useState(false);
-  const [layout, setLayout] = useState<FurnitureLayout>(initialFurnitureLayout);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-
   useEffect(() => {
-    setCanEdit(new URLSearchParams(window.location.search).get("edit") === "1");
-  }, []);
-  const stageRef = useRef<HTMLDivElement>(null);
-
-  function pointToPercent(clientX: number, clientY: number) {
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
-    const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
-    return { x, y };
-  }
-
-  function startDrag(id: string) {
-    return (event: ReactMouseEvent) => {
-      if (!editMode) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setDraggingId(id);
-    };
-  }
-
-  useEffect(() => {
-    if (!draggingId) return;
-    function onMove(event: MouseEvent) {
-      const point = pointToPercent(event.clientX, event.clientY);
-      if (!point) return;
-      setLayout(prev => ({
-        ...prev,
-        [draggingId!]: { ...prev[draggingId!], x: Math.round(point.x * 10) / 10, y: Math.round(point.y * 10) / 10 }
-      }));
-    }
-    function onUp() {
-      setDraggingId(null);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [draggingId]);
-
-  function toggleFlip(id: string) {
-    setLayout(prev => ({ ...prev, [id]: { ...prev[id], flip: !prev[id].flip } }));
-  }
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
-      event.preventDefault();
-      if (event.key === "ArrowLeft") setFacing("left");
-      if (event.key === "ArrowRight") setFacing("right");
-      setPos(prev => {
-        let { x, y } = prev;
-        if (event.key === "ArrowUp") y -= CHARACTER_STEP;
-        if (event.key === "ArrowDown") y += CHARACTER_STEP;
-        if (event.key === "ArrowLeft") x -= CHARACTER_STEP;
-        if (event.key === "ArrowRight") x += CHARACTER_STEP;
-        return clampToFloor(x, y);
-      });
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  useEffect(() => () => {
-    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
-  }, []);
-
-  const mode = characterModes[modeIndex];
-
-  /* 캐릭터와 가장 가까운 가구를 찾습니다. 일정 거리 안이면 그 가구의 상호작용
-     문구를 보여 줍니다. 클릭으로 뜬 모드 멘트(bubble)가 떠 있는 동안에는
-     그게 먼저입니다. */
-  const nearbyItem = useMemo(() => {
-    let closest: (typeof furnitureItems)[number] | null = null;
-    let closestDist = Infinity;
-    for (const item of furnitureItems) {
-      const placed = layout[item.id];
-      if (!placed) continue;
-      const dx = placed.x - pos.x;
-      const dy = placed.y - pos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < NEAR_DISTANCE && dist < closestDist) {
-        closest = item;
-        closestDist = dist;
-      }
-    }
-    return closest;
-  }, [pos, layout]);
-
-  const displayBubble = bubble ?? nearbyItem?.hint ?? null;
-
-  function cycleMode() {
-    const nextIndex = (modeIndex + 1) % characterModes.length;
-    const nextMode = characterModes[nextIndex];
-    setModeIndex(nextIndex);
-    setBubble(nextMode.lines[Math.floor(Math.random() * nextMode.lines.length)]);
-    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = setTimeout(() => setBubble(null), BUBBLE_DURATION_MS);
-  }
+    if (greetingIndex < 0) return;
+    const timer = window.setTimeout(() => setGreetingIndex(-1), 5000);
+    return () => window.clearTimeout(timer);
+  }, [greetingIndex]);
 
   return (
-    <div
-      className="cy-miniroom-stage"
-      ref={stageRef}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-    >
-      <img className="cy-miniroom-bg" src={asset(profile.miniroom.src)} alt={profile.miniroom.alt} />
-
-      {furnitureItems.map(item => {
-        const placed = layout[item.id];
-        return (
-          <div
-            key={item.id}
-            className={"cy-miniroom-furniture-wrap" + (editMode ? " is-editable" : "")}
-            style={{ left: `${placed.x}%`, top: `${placed.y}%`, height: `${item.heightPercent}%` }}
-            onMouseDown={startDrag(item.id)}
-          >
-            <img
-              className="cy-miniroom-furniture"
-              src={asset(item.src)}
-              alt={item.alt}
-              draggable={false}
-              style={{ transform: `scaleX(${placed.flip ? -1 : 1})` }}
-            />
-            {editMode ? (
-              <div className="cy-edit-tag">
-                <span>{item.id} · {placed.x.toFixed(1)}, {placed.y.toFixed(1)}</span>
-                <button
-                  type="button"
-                  onClick={event => {
-                    event.stopPropagation();
-                    toggleFlip(item.id);
-                  }}
-                  title="좌우 반전"
-                >
-                  ⇋
-                </button>
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-
-      {editMode ? (
-        <div
-          className="cy-miniroom-character-tag"
-          style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-        >
-          캐릭터 · {pos.x.toFixed(1)}, {pos.y.toFixed(1)}
+    <figure className="cy-garden-room">
+      <div className="cy-miniroom-stage">
+        <img
+          className="cy-miniroom-bg"
+          src={asset(profile.miniroom.src)}
+          alt={profile.miniroom.alt}
+          width={1145}
+          height={1374}
+          fetchPriority="high"
+        />
+        <div className="cy-garden-bubble" role="status" aria-live="polite">
+          {greetingIndex >= 0 ? <span>{gardenGreetings[greetingIndex]}</span> : null}
         </div>
-      ) : null}
-
-      {canEdit ? (
+      </div>
+      <figcaption className="cy-garden-caption">
+        <span>일상의 궁금증을 생명과학으로</span>
         <button
           type="button"
-          className="cy-miniroom-edit-toggle"
-          onClick={() => setEditMode(v => !v)}
+          className="cy-garden-greet"
+          onClick={() => setGreetingIndex(index => (index + 1) % gardenGreetings.length)}
         >
-          {editMode ? "편집모드 끄기" : "편집모드"}
+          N에게 인사하기 <span aria-hidden="true">♡</span>
         </button>
-      ) : null}
-
-      {hovering && !editMode ? (
-        <div className="cy-miniroom-hint">방향키로 이동 · 클릭하면 모드가 바뀌어요</div>
-      ) : null}
-
-      <button
-        type="button"
-        className="cy-miniroom-character"
-        style={{
-          left: `${pos.x}%`,
-          top: `${pos.y}%`,
-          transform: `translate(-50%, -100%) scaleX(${facing === "right" ? -1 : 1})`
-        }}
-        onClick={cycleMode}
-        aria-label={`캐릭터 모드 바꾸기 (현재: ${mode.label})`}
-      >
-        {displayBubble ? (
-          <span
-            className={`cy-character-bubble${!bubble ? " is-hint" : ""}`}
-            style={{ transform: `translateX(-50%) scaleX(${facing === "right" ? -1 : 1})` }}
-          >
-            {displayBubble}
-          </span>
-        ) : null}
-        <img src={asset(mode.src)} alt={`N 캐릭터 - ${mode.label}`} draggable={false} />
-      </button>
-    </div>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -415,13 +205,18 @@ function HomeTab({
   const setProfile = (patch: Partial<SiteContent["profile"]>) =>
     update({ profile: { ...content.profile, ...patch } });
 
+  const miniroomTitle = /^(Punky Room|Mini Room)$/i.test(content.profile.miniroomTitle)
+    ? "미니룸" : content.profile.miniroomTitle;
+  const miniroomSub = /^(펑키룸|미니룸)$/.test(content.profile.miniroomSub)
+    ? "생명과학 탐구 정원" : content.profile.miniroomSub;
+
   return (
     <>
       <div className="cy-content-box cy-miniroom-box">
         <SectionTitle
           title={
             <EditableText
-              value={content.profile.miniroomTitle}
+              value={miniroomTitle}
               editing={editing}
               placeholder="Mini Room"
               onSave={miniroomTitle => setProfile({ miniroomTitle })}
@@ -429,7 +224,7 @@ function HomeTab({
           }
           sub={
             <EditableText
-              value={content.profile.miniroomSub}
+              value={miniroomSub}
               editing={editing}
               placeholder="미니룸"
               onSave={miniroomSub => setProfile({ miniroomSub })}
@@ -437,7 +232,7 @@ function HomeTab({
           }
         />
         <div className="cy-miniroom-inner">
-          <MiniRoomCharacter introSkipped={introSkipped} />
+          <MiniRoom introSkipped={introSkipped} />
         </div>
       </div>
 
@@ -1034,7 +829,7 @@ export default function LinkTree() {
     }
   };
 
-  if (!ready) return <div className="site-loading" role="status" aria-live="polite">
+  if (!ready) return <div className="site-loading garden-loading" role="status" aria-live="polite">
     <div className="site-loading-card"><span className="admin-mark">N</span><h1>{loadError ? "잠시 연결이 끊겼어요" : "최신 내용을 불러오고 있어요"}</h1>
       <p>{loadError ?? "조금만 기다려 주세요."}</p>{loadError ? <button type="button" className="admin-primary" onClick={site.retry}>다시 불러오기</button> : <span className="site-loading-dots" aria-hidden="true">···</span>}
     </div>
@@ -1045,13 +840,9 @@ export default function LinkTree() {
   return (
     <div
       className={`cy-root${adminMode ? " has-admin-bar" : ""}`}
-      style={{
-        backgroundImage:
-          "linear-gradient(180deg, rgba(10,5,18,0.4), rgba(10,5,18,0.6)), " +
-          `url(${asset("/assets/cyberpunk-pixel-bg.jpg")})`
-      }}
+      style={{ backgroundImage: `url(${asset("/assets/background-garden.webp")})` }}
     >
-      <div className="cy-background-pattern"></div>
+      <div className="cy-background-pattern" aria-hidden="true"></div>
       {adminMode ? <div className="admin-bar">
         <span className="admin-bar-title">미니홈피 관리</span>
         <span className="admin-bar-status" role="status">{isOwner ? site.saveStatus === "saving" ? "저장 중…" : site.dirty ? "미리보기 · 아직 저장하지 않았어요" : "저장된 최신 내용" : "주인장 계정으로 로그인해 주세요"}</span>
@@ -1084,7 +875,7 @@ export default function LinkTree() {
                 <div className="cy-today-is">TODAY IS.. <span className="text-orange">맑음 ☀️</span></div>
 
                 <div className="cy-profile-pic">
-                  <img src={asset(profile.photo.src)} alt={profile.photo.alt} />
+                  <img src={asset(profile.photo.src)} alt={profile.photo.alt} width={640} height={640} />
                 </div>
 
                 <EditableText
@@ -1111,7 +902,7 @@ export default function LinkTree() {
                   <EditableText
                     as="div"
                     className="title-sub"
-                    value={content.profile.catalogDescription}
+                    value={content.profile.catalogDescription === "Like, Cyber, Punk," ? "일상의 궁금증을 생명과학으로" : content.profile.catalogDescription}
                     editing={canEdit}
                     placeholder="한 줄 설명"
                     onSave={catalogDescription => setProfile({ catalogDescription })}
@@ -1159,6 +950,8 @@ export default function LinkTree() {
               {tabs.map(tab => (
                 <div key={tab.id} className="cy-tab-slot">
                   <button
+                    type="button"
+                    aria-current={activeTab?.id === tab.id ? "page" : undefined}
                     className={"cy-tab-btn " + (activeTab?.id === tab.id ? "active" : "")}
                     onClick={() => setActiveTabId(tab.id)}
                   >
