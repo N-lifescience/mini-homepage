@@ -123,6 +123,45 @@ test('fixed wave link, safe protocols and stable defaults are enforced', () => {
   a.waveLinks[1].href = 'data:text/html,unsafe'; assert.ok(f.editor.validateContent(a));
 });
 
+test('legacy content receives room defaults; malformed positions cannot break the room', () => {
+  const f = fixture();
+  const legacy = structuredClone(f.original); delete legacy.miniroomLayout;
+  assert.deepEqual(f.site.normalize(legacy).miniroomLayout, f.site.defaultContent().miniroomLayout);
+  const repaired = f.site.normalize({ miniroomLayout: { characterStart: { x: Infinity, y: -100 }, furniture: {
+    'lab-counter': { x: 200, y: NaN, flip: 'yes' }, unknown: { x: 50, y: 50, flip: true }
+  } } }).miniroomLayout;
+  assert.equal(repaired.furniture['lab-counter'].x, 100);
+  assert.equal(repaired.furniture['lab-counter'].y, f.original.miniroomLayout.furniture['lab-counter'].y);
+  assert.equal(repaired.furniture['lab-counter'].flip, false);
+  assert.equal('unknown' in repaired.furniture, false);
+  assert.equal(repaired.characterStart.y, 43);
+  assert.equal(f.editor.validateContent({ ...f.original, miniroomLayout: repaired }), null);
+});
+
+test('room layout and character start survive save/reload with undo and redo', async () => {
+  const f = fixture(); f.snapshot(f.original); f.state.beginEditing(); f.render();
+  const moved = structuredClone(f.original.miniroomLayout);
+  moved.furniture['office-chair'] = { x: 38.5, y: 78, flip: true };
+  moved.characterStart = { x: 55, y: 82 };
+  f.state.update({ miniroomLayout: moved }); f.render();
+  assert.equal(f.writes, 0); assert.equal(f.state.dirty, true);
+  f.state.undo(); f.render(); assert.equal(f.state.content.miniroomLayout.characterStart.x, 65);
+  f.state.redo(); f.render(); assert.equal(f.state.content.miniroomLayout.characterStart.x, 55);
+  assert.equal(await f.state.save(), true); f.render();
+  assert.deepEqual(f.write.miniroomLayout, moved);
+  const visitor = fixture(); visitor.signOut(); visitor.snapshot(f.write);
+  assert.deepEqual(structuredClone(visitor.state.content.miniroomLayout), moved);
+  assert.equal(visitor.state.isOwner, false);
+});
+
+test('invalid room positions are rejected without publishing a draft', async () => {
+  const f = fixture(); f.snapshot(f.original); f.state.beginEditing(); f.render();
+  const invalid = structuredClone(f.original.miniroomLayout); invalid.characterStart = { x: 0, y: 0 };
+  f.state.update({ miniroomLayout: invalid }); f.render();
+  assert.equal(await f.state.save(), false); f.render();
+  assert.equal(f.writes, 0); assert.equal(f.state.saveStatus, 'error'); assert.equal(f.state.dirty, true);
+});
+
 test('offline saves fail visibly and signing out removes owner draft', async () => {
   const f = fixture(); f.snapshot(f.original); f.state.beginEditing(); f.render();
   f.state.update({ profile: { ...f.state.content.profile, teacherName: '임시 내용' } }); f.render();

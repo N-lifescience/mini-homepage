@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { asset } from "./asset";
 import { contentFingerprint, validateContent } from "./editor-state";
+import { defaultMiniRoomLayout, normalizeMiniRoomLayout, type MiniRoomLayout } from "./miniroom-layout";
 import {
   currentUser,
   getStore,
@@ -108,6 +109,7 @@ export type SiteContent = {
   blocks: Record<string, ContentBlock[]>;
   boardPosts: BoardPost[];
   waveLinks: WaveLink[];
+  miniroomLayout: MiniRoomLayout;
 };
 
 /* ------------------------------------------------------------------ */
@@ -145,6 +147,7 @@ function defaultProfileBlocks(): ContentBlock[] {
 export function defaultContent(): SiteContent {
   return {
     ownerUid: null,
+    miniroomLayout: defaultMiniRoomLayout(),
     profile: {
       teacherName: staticProfile.teacherName,
       introTitle: staticProfile.introTitle,
@@ -201,6 +204,7 @@ export function normalize(raw: Partial<SiteContent> | undefined): SiteContent {
   const savedFixed = savedWaves.find(w => w.id === fixed.id);
   return {
     ownerUid: typeof raw.ownerUid === "string" ? raw.ownerUid : null,
+    miniroomLayout: normalizeMiniRoomLayout(raw.miniroomLayout),
     profile: { ...base.profile, ...(raw.profile ?? {}) },
     tabs,
     blocks: raw.blocks && typeof raw.blocks === "object" ? raw.blocks : base.blocks,

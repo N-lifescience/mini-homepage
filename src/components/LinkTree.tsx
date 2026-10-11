@@ -144,13 +144,17 @@ function HomeTab({
   content,
   editing,
   update,
-  isOwner
+  isOwner,
+  roomEditable,
+  roomBusy
 }: {
   introSkipped: boolean;
   content: SiteContent;
   editing: boolean;
   update: (patch: Partial<SiteContent>) => void;
   isOwner: boolean;
+  roomEditable: boolean;
+  roomBusy: boolean;
 }) {
   const setProfile = (patch: Partial<SiteContent["profile"]>) =>
     update({ profile: { ...content.profile, ...patch } });
@@ -182,7 +186,8 @@ function HomeTab({
           }
         />
         <div className="cy-miniroom-inner">
-          <MiniRoom introSkipped={introSkipped} />
+          <MiniRoom introSkipped={introSkipped} roomLayout={content.miniroomLayout} disabled={roomBusy}
+            onLayoutChange={roomEditable ? miniroomLayout => update({ miniroomLayout }) : undefined} />
         </div>
       </div>
 
@@ -723,7 +728,7 @@ export default function LinkTree() {
      정적 배포에서도 동작하도록 브라우저에서 읽습니다. */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("admin") === "1") {
+    if (params.get("admin") === "1" || params.get("edit") === "1") {
       setAdminMode(true);
       setIntroSkipped(true);
     }
@@ -763,6 +768,8 @@ export default function LinkTree() {
             editing={canEdit}
             update={update}
             isOwner={isOwner}
+            roomEditable={isOwner && adminMode}
+            roomBusy={site.saveStatus === "saving"}
           />
         );
       case "board":

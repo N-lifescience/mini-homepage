@@ -2,11 +2,13 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { BlockList } from "./Editable";
+import MiniRoom from "./MiniRoom";
 import { newId, type BoardPost, type SiteContent, type SiteContentState, type TabDef } from "@/lib/site-content";
 
-type Section = "profile" | "tabs" | "content" | "waves";
+type Section = "profile" | "tabs" | "content" | "waves" | "room";
 const sections: { id: Section; label: string; detail: string; icon: string }[] = [
   { id: "profile", label: "기본 정보", detail: "이름과 소개 문구", icon: "✎" },
+  { id: "room", label: "미니룸", detail: "소품과 시작 위치", icon: "⌂" },
   { id: "tabs", label: "탭 관리", detail: "이름·순서", icon: "▤" },
   { id: "content", label: "글과 사진", detail: "탭에 담을 내용", icon: "▧" },
   { id: "waves", label: "파도타기", detail: "자주 가는 링크", icon: "↗" }
@@ -48,7 +50,7 @@ export default function AdminEditor({ state, images, initialTabId, onPreview, on
   onPreview: (tabId: string) => void; onClose: () => void;
 }) {
   const { content, update, saveStatus, dirty } = state;
-  const [section, setSection] = useState<Section>("content");
+  const [section, setSection] = useState<Section>(initialTabId === "home" ? "room" : "content");
   const editableTabs = content.tabs.filter(tab => !["home", "oekaki", "guestbook"].includes(tab.kind));
   const [tabId, setTabId] = useState(initialTabId);
   const [search, setSearch] = useState("");
@@ -111,6 +113,10 @@ export default function AdminEditor({ state, images, initialTabId, onPreview, on
         <main className="admin-main">
           <div className="admin-section-head"><div><span className="admin-eyebrow">{content.profile.teacherName}</span><h2>{selected.label}</h2></div><span className="admin-section-detail">{selected.detail}</span></div>
           <fieldset disabled={saveStatus === "saving"} className="admin-fields">
+          {section === "room" ? <section className="admin-card admin-room-card"><h3>미니룸 배치</h3>
+            <MiniRoom introSkipped editing disabled={busy} roomLayout={content.miniroomLayout}
+              onLayoutChange={miniroomLayout => update({ miniroomLayout })} />
+          </section> : null}
           {section === "profile" ? <>
             <section className="admin-card"><h3>처음 만나는 내 미니홈피</h3><p className="admin-help">첫 화면과 왼쪽 프로필에 보이는 문구예요.</p>
               <div className="admin-two-columns"><Field label="표시 이름" required value={content.profile.teacherName} onChange={teacherName => setProfile({ teacherName })} /><Field label="첫 화면 제목" required value={content.profile.introTitle} onChange={introTitle => setProfile({ introTitle })} /></div>

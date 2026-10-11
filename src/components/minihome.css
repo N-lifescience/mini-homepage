@@ -197,6 +197,30 @@
 .cy-root .cy-room-controls button:nth-child(3) { grid-column: 2; grid-row: 2; }
 .cy-root .cy-room-controls button:nth-child(4) { grid-column: 3; grid-row: 2; }
 .cy-root .cy-room-controls button:hover, .cy-root .cy-room-controls button:active { background: #dfeccf; }
+.cy-root .cy-miniroom-stage.is-arranging .cy-miniroom-character { cursor: grab; touch-action: none; transition: none; }
+.cy-root .cy-miniroom-stage.is-arranging .cy-miniroom-character:active { cursor: grabbing; }
+.cy-root .cy-miniroom-stage .is-selected { outline: 2px dashed #426b3e; outline-offset: 3px; border-radius: 6px; }
+.cy-root .cy-room-editor { padding: 14px; border-top: 1px solid #c5d6b7; background: #f0f5e4; color: #47573d; font-size: 14px; line-height: 1.7; }
+.cy-root .cy-room-editor p { margin: 0 0 12px; }
+.cy-root .cy-room-fields { display: grid; grid-template-columns: minmax(130px, 2fr) repeat(2, minmax(80px, 1fr)); gap: 12px; }
+.cy-root .cy-room-fields label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cy-root .cy-room-fields :is(input, select) { min-height: 44px; width: 100%; min-width: 0; padding: 8px; border: 1px solid #b7cea3; border-radius: 7px; background: #fffef6; color: #30482e; font-size: 16px; }
+.cy-root .cy-room-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.cy-root .cy-room-editor-actions button { min-height: 44px; padding: 8px 12px; border: 1px solid #b7cea3; border-radius: 7px; background: #fffef6; color: #426b3e; font-size: 14px; cursor: pointer; }
+.cy-root .cy-room-editor-actions button[aria-pressed="true"] { background: #dfeccf; }
+.cy-root .cy-room-editor .cy-room-editor-note { font-size: 13px; margin-bottom: 6px; }
+.cy-root .cy-room-editor a { color: #426b3e; text-decoration: underline; }
+.cy-root .admin-room-card .cy-interactive-room { margin-top: 14px; overflow: hidden; border: 1px solid #c5d6b7; border-radius: 12px; }
+@media (min-width: 1200px) {
+  .cy-root .admin-room-card .cy-interactive-room { display: grid; grid-template-columns: minmax(0, 1fr) 250px; align-items: start; }
+  .cy-root .admin-room-card .cy-room-editor { border-top: 0; border-left: 1px solid #c5d6b7; }
+  .cy-root .admin-room-card .cy-room-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cy-root .admin-room-card .cy-room-fields label:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .cy-root .cy-room-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cy-root .cy-room-fields label:first-child { grid-column: 1 / -1; }
+}
 .cy-root .cy-tabs { right: -83px; top: 45px; gap: 8px; }
 .cy-root .cy-tab-btn,
 .cy-root .cy-tab-btn:hover,

@@ -1,4 +1,5 @@
 import type { SiteContent } from "./site-content";
+import { isMiniRoomLayoutValid } from "./miniroom-layout";
 
 /** Compare values rather than Firestore's map field order. */
 export function contentFingerprint(value: unknown): string {
@@ -18,6 +19,7 @@ export function safeHref(value: string): boolean {
 }
 
 export function validateContent(content: SiteContent): string | null {
+  if (!isMiniRoomLayoutValid(content.miniroomLayout)) return "미니룸 위치를 확인해 주세요.";
   if (!content.profile.teacherName.trim() || !content.profile.introTitle.trim()) {
     return "이름과 첫 화면 제목을 입력해 주세요.";
   }
